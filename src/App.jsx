@@ -1,10 +1,18 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { setAuthToken } from './api/api';
+
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegistrationPage';
 import DashboardPage from './pages/DashboardPage';
 import HistoryPage from './pages/HistoryPage';
 
 function App() {
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    setAuthToken(token);
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>

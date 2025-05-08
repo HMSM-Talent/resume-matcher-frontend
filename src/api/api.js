@@ -1,19 +1,15 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: import.meta.env.VITE_API_URL,
 });
 
-// Automatically attach token if available
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
+export const setAuthToken = (token) => {
   if (token) {
-    config.headers['Authorization'] = `Bearer ${token}`;
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common['Authorization'];
   }
-  return config;
-});
+};
 
 export default api;

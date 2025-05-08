@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 function HistoryPage() {
   return (
     <div>
@@ -5,3 +7,5 @@ function HistoryPage() {
     </div>
   );
 }
+
+export default HistoryPage;
