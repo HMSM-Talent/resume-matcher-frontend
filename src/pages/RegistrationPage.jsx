@@ -100,7 +100,25 @@ function RegistrationPage() {
       // Redirect to dashboard
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+      // Enhanced error handling to show more detailed error messages
+      const errorData = err.response?.data;
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (errorData) {
+        if (typeof errorData === 'object') {
+          // Handle multiple validation errors
+          const errorMessages = Object.entries(errorData)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('\n');
+          errorMessage = errorMessages || errorData.detail || errorMessage;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
