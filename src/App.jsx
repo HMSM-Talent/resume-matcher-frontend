@@ -9,15 +9,13 @@ import JDUploadPage from './pages/JDUploadPage';
 
 
 function App() {
-<<<<<<< Updated upstream
-=======
+
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     console.log("Injecting token:", token);
     setAuthToken(token);
   }, []);
 
->>>>>>> Stashed changes
   return (
     <BrowserRouter>
       <Routes>

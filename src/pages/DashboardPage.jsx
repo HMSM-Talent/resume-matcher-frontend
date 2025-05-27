@@ -1,6 +1,4 @@
 function DashboardPage() {
-<<<<<<< Updated upstream
-=======
   const [user, setUser] = useState(null);
   const [file, setFile] = useState(null);
   const [message, setMessage] = useState('');
@@ -43,11 +41,4 @@ function DashboardPage() {
       </div>
     );
   }
-
->>>>>>> Stashed changes
-  return (
-    <div>
-      <h1>Dashboard Page</h1>
-    </div>
-  );
 }
