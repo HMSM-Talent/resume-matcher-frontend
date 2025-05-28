@@ -10,10 +10,8 @@ function RegistrationPage() {
     // Common fields
     email: '',
     password: '',
-    confirmPassword: '',
+    password2: '', // Added for password confirmation
     phone_number: '',
-    
-    // Candidate fields
     first_name: '',
     last_name: '',
     
@@ -39,7 +37,7 @@ function RegistrationPage() {
     setFormData({
       email: '',
       password: '',
-      confirmPassword: '',
+      password2: '',
       phone_number: '',
       first_name: '',
       last_name: '',
@@ -50,7 +48,7 @@ function RegistrationPage() {
   };
 
   const validateForm = () => {
-    if (formData.password !== formData.confirmPassword) {
+    if (formData.password !== formData.password2) {
       setError('Passwords do not match');
       return false;
     }
@@ -83,13 +81,30 @@ function RegistrationPage() {
     setLoading(true);
 
     try {
-      // Remove confirmPassword before sending to API
-      const { confirmPassword, ...registrationData } = formData;
+      // Prepare registration data based on user type
+      const registrationData = {
+        email: formData.email,
+        password: formData.password,
+        phone_number: formData.phone_number,
+      };
+
+      if (userType === 'candidate') {
+        registrationData.first_name = formData.first_name;
+        registrationData.last_name = formData.last_name;
+      } else {
+        registrationData.company_name = formData.company_name;
+        registrationData.industry = formData.industry;
+        registrationData.company_size = formData.company_size;
+      }
+      
+      console.log('Submitting registration with data:', registrationData);
       
       // Use the appropriate registration function based on user type
       const response = userType === 'candidate' 
         ? await registerCandidate(registrationData)
         : await registerCompany(registrationData);
+      
+      console.log('Registration response:', response);
       
       const { access, refresh } = response.data;
       
@@ -100,6 +115,7 @@ function RegistrationPage() {
       // Redirect to dashboard
       navigate('/dashboard');
     } catch (err) {
+      console.error('Registration error:', err);
       // Enhanced error handling to show more detailed error messages
       const errorData = err.response?.data;
       let errorMessage = 'Registration failed. Please try again.';
@@ -176,32 +192,30 @@ function RegistrationPage() {
           {/* Candidate-specific fields */}
           {userType === 'candidate' && (
             <>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="first_name">First Name</label>
-                  <input
-                    type="text"
-                    id="first_name"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter your first name"
-                  />
-                </div>
+              <div className="form-group">
+                <label htmlFor="first_name">First Name</label>
+                <input
+                  type="text"
+                  id="first_name"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter your first name"
+                />
+              </div>
 
-                <div className="form-group">
-                  <label htmlFor="last_name">Last Name</label>
-                  <input
-                    type="text"
-                    id="last_name"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter your last name"
-                  />
-                </div>
+              <div className="form-group">
+                <label htmlFor="last_name">Last Name</label>
+                <input
+                  type="text"
+                  id="last_name"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter your last name"
+                />
               </div>
             </>
           )}
@@ -269,12 +283,12 @@ function RegistrationPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+            <label htmlFor="password2">Confirm Password</label>
             <input
               type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
+              id="password2"
+              name="password2"
+              value={formData.password2}
               onChange={handleChange}
               required
               placeholder="Confirm your password"

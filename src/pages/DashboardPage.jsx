@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import api from '../api/api';
+import { uploadResume, uploadJobDescription } from '../api/api';
 
 function DashboardPage() {
   const [user, setUser] = useState(null);
   const [file, setFile] = useState(null);
+  const [title, setTitle] = useState('');
+  const [skills, setSkills] = useState('');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await api.get('/api/auth/user/');
+        const res = await api.get('/accounts/me/');
         setUser(res.data);
       } catch {
         setMessage('Failed to load user info.');
@@ -18,18 +20,43 @@ function DashboardPage() {
     fetchUser();
   }, []);
 
-  const handleUpload = async (url) => {
+  const handleUpload = async () => {
+    if (!file) {
+      setMessage('❌ Please select a file first.');
+      return;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
+    
+    if (user.role === 'candidate') {
+      if (title) formData.append('title', title);
+      if (skills) formData.append('skills', skills);
+    } else {
+      // For job descriptions, title is required
+      if (!title) {
+        setMessage('❌ Job title is required.');
+        return;
+      }
+      formData.append('title', title);
+      formData.append('company_name', user.company_name);
+      formData.append('location', user.location || '');
+      formData.append('job_type', user.job_type || 'full-time');
+      formData.append('experience_level', user.experience_level || 'mid');
+      formData.append('required_skills', skills);
+    }
+
     try {
-      await api.post(url, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = user.role === 'candidate' 
+        ? await uploadResume(formData)
+        : await uploadJobDescription(formData);
+      
       setMessage('✅ File uploaded successfully.');
+      setFile(null);
+      setTitle('');
+      setSkills('');
     } catch (err) {
-      setMessage('❌ Upload failed.');
+      setMessage('❌ Upload failed: ' + (err.response?.data?.detail || 'Unknown error'));
     }
   };
 
@@ -48,21 +75,47 @@ function DashboardPage() {
 
       {(user.role === 'candidate' || user.role === 'company') && (
         <div className="space-y-4">
-          <label className="block">
-            <span className="text-gray-700 font-medium">
+          <div className="form-group">
+            <label className="text-gray-700 font-medium">
+              {user.role === 'candidate' ? 'Resume Title' : 'Job Title'}
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 rounded p-2"
+              placeholder={user.role === 'candidate' ? 'Enter resume title' : 'Enter job title'}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="text-gray-700 font-medium">
+              {user.role === 'candidate' ? 'Skills' : 'Required Skills'}
+            </label>
+            <input
+              type="text"
+              value={skills}
+              onChange={(e) => setSkills(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 rounded p-2"
+              placeholder="Enter skills (comma-separated)"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="text-gray-700 font-medium">
               {user.role === 'candidate' ? 'Upload Resume' : 'Upload Job Description'}
-            </span>
+            </label>
             <input
               type="file"
               onChange={(e) => setFile(e.target.files[0])}
               className="mt-1 block w-full border border-gray-300 rounded p-2"
+              accept=".pdf,.docx"
             />
-          </label>
+            <p className="text-sm text-gray-500 mt-1">Supported formats: PDF, DOCX (max 10MB)</p>
+          </div>
 
           <button
-            onClick={() =>
-              handleUpload(user.role === 'candidate' ? '/api/upload-resume/' : '/api/upload-jd/')
-            }
+            onClick={handleUpload}
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded"
           >
             Upload File

@@ -1,51 +1,37 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegistrationPage';
-import DashboardPage from './pages/DashboardPage';
-import HistoryPage from './pages/HistoryPage';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './components/Login';
+import Register from './components/Register';
+import Dashboard from './components/Dashboard';
 import './App.css';
 
-// Protected Route component
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <div>Loading...</div>;
+// Create router with future flags
+const router = {
+  future: {
+    v7_startTransition: true,
+    v7_relativeSplatPath: true
   }
-
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
 };
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <Router {...router}>
         <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <DashboardPage />
+                <Dashboard />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/history"
-            element={
-              <ProtectedRoute>
-                <HistoryPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-      </BrowserRouter>
+      </Router>
     </AuthProvider>
   );
 }

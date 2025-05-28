@@ -1,0 +1,71 @@
+.register-container {
+  @apply min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white;
+}
+
+.register-form-container {
+  @apply max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg;
+}
+
+.register-header {
+  @apply text-center;
+}
+
+.register-title {
+  @apply text-2xl font-bold text-gray-900 tracking-tight;
+}
+
+.register-subtitle {
+  @apply mt-2 text-sm text-gray-600;
+}
+
+.register-form {
+  @apply mt-8 space-y-6;
+}
+
+.form-group {
+  @apply space-y-4;
+}
+
+.form-input {
+  @apply block w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition duration-150 ease-in-out;
+}
+
+.form-input-first {
+  @apply rounded-t-md;
+}
+
+.form-input-last {
+  @apply rounded-b-md;
+}
+
+.form-input-middle {
+  @apply -mt-px;
+}
+
+.register-button {
+  @apply w-full flex justify-center py-3 px-4 border border-transparent rounded-lg text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-150 ease-in-out font-medium;
+}
+
+.register-button-disabled {
+  @apply opacity-50 cursor-not-allowed hover:bg-gray-900;
+}
+
+.register-button-icon {
+  @apply absolute left-0 inset-y-0 flex items-center pl-3;
+}
+
+.register-button-text {
+  @apply relative;
+}
+
+.register-link {
+  @apply font-medium text-gray-900 hover:text-gray-700 transition duration-150 ease-in-out;
+}
+
+.error-message {
+  @apply text-sm text-red-600 mt-2 bg-red-50 p-3 rounded-lg;
+}
+
+.role-select {
+  @apply block w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent transition duration-150 ease-in-out;
+} 

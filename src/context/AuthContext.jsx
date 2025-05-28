@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api/api';
 
 const AuthContext = createContext(null);
 
@@ -8,66 +7,27 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
+    // Check if user is logged in on mount
+    const token = localStorage.getItem('token');
+    if (token) {
+      setUser({ token });
+    }
+    setLoading(false);
   }, []);
 
-  const checkAuth = async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await api.get('/accounts/me/');
-      setUser(response.data);
-    } catch (error) {
-      // If token is invalid, clear it
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const login = async (email, password) => {
-    const response = await api.post('/accounts/login/', { email, password });
-    const { access, refresh } = response.data;
-    
-    localStorage.setItem('accessToken', access);
-    localStorage.setItem('refreshToken', refresh);
-    
-    await checkAuth();
-  };
-
-  const register = async (userData) => {
-    const response = await api.post('/accounts/register/', userData);
-    const { access, refresh } = response.data;
-    
-    localStorage.setItem('accessToken', access);
-    localStorage.setItem('refreshToken', refresh);
-    
-    await checkAuth();
+  const login = (token) => {
+    localStorage.setItem('token', token);
+    setUser({ token });
   };
 
   const logout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('token');
     setUser(null);
   };
 
-  const value = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    checkAuth,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
+      {children}
     </AuthContext.Provider>
   );
 };

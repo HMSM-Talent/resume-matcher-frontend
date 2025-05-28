@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { login } from '../api/api';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './LoginPage.css';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { loginUser } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -26,17 +28,29 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(formData);
-      const { access, refresh } = response.data;
-      
-      // Store tokens
-      localStorage.setItem('accessToken', access);
-      localStorage.setItem('refreshToken', refresh);
-      
-      // Redirect to dashboard
-      navigate('/dashboard');
+      await loginUser(formData.email, formData.password);
+      // Redirect to the page they tried to visit or dashboard
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to login. Please try again.');
+      console.error('Login error:', err);
+      const errorData = err.response?.data;
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (errorData) {
+        if (typeof errorData === 'object') {
+          const errorMessages = Object.entries(errorData)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('\n');
+          errorMessage = errorMessages || errorData.detail || errorMessage;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -88,7 +102,7 @@ function LoginPage() {
 
         <p className="register-link">
           Don't have an account?{' '}
-          <Link to="/register">Register here</Link>
+          <Link to="/register">Create one here</Link>
         </p>
       </div>
     </div>
