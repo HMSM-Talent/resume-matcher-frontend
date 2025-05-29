@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import useAuth from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegistrationPage';
 import DashboardPage from './pages/DashboardPage';
@@ -8,13 +9,9 @@ import './App.css';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!user) {
+  const token = localStorage.getItem('accessToken');
+  
+  if (!token) {
     return <Navigate to="/" replace />;
   }
 

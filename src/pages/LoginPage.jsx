@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { login } from '../api/api';
 import './LoginPage.css';
 
@@ -16,7 +16,7 @@ function LoginPage() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value.trim()
     }));
   };
 
@@ -27,16 +27,37 @@ function LoginPage() {
 
     try {
       const response = await login(formData);
-      const { access, refresh } = response.data;
-      
-      // Store tokens
+      const { access, refresh, user } = response.data;
+
       localStorage.setItem('accessToken', access);
       localStorage.setItem('refreshToken', refresh);
-      
-      // Redirect to dashboard
+      localStorage.setItem('userData', JSON.stringify({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        is_active: user.is_active,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        date_joined: user.date_joined,
+      }));
+
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to login. Please try again.');
+      let errorMessage = 'Failed to login. Please try again.';
+
+      const errorData = err.response?.data;
+      if (errorData) {
+        if (typeof errorData === 'object') {
+          const messages = Object.entries(errorData)
+            .map(([field, msg]) => `${field}: ${Array.isArray(msg) ? msg.join(', ') : msg}`)
+            .join('\n');
+          errorMessage = messages || errorData.detail || errorMessage;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -77,8 +98,8 @@ function LoginPage() {
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="login-button"
             disabled={loading}
           >
@@ -87,7 +108,7 @@ function LoginPage() {
         </form>
 
         <p className="register-link">
-          Don't have an account?{' '}
+          Don’t have an account?{' '}
           <Link to="/register">Register here</Link>
         </p>
       </div>

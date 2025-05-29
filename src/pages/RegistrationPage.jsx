@@ -1,56 +1,66 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { registerCandidate, registerCompany } from '../api/api';
 import './RegistrationPage.css';
 
 function RegistrationPage() {
   const navigate = useNavigate();
-  const [userType, setUserType] = useState('candidate'); // 'candidate' or 'company'
+  const [userType, setUserType] = useState('candidate');
   const [formData, setFormData] = useState({
-    // Common fields
     email: '',
     password: '',
-    confirmPassword: '',
-    phone_number: '',
-    
-    // Candidate fields
+    password2: '',
     first_name: '',
     last_name: '',
-    
-    // Company fields
-    company_name: '',
-    industry: '',
-    company_size: '',
+    profile: {
+      phone_number: '',
+      company_name: ''
+    }
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+
+    // Nested fields (profile.phone_number or profile.company_name)
+    if (name.startsWith('profile.')) {
+      const profileField = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        profile: {
+          ...prev.profile,
+          [profileField]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleUserTypeChange = (e) => {
-    setUserType(e.target.value);
-    // Reset form data when switching user types
+    const newType = e.target.value;
+    setUserType(newType);
+
+    // Reset form for new user type
     setFormData({
       email: '',
       password: '',
-      confirmPassword: '',
-      phone_number: '',
+      password2: '',
       first_name: '',
       last_name: '',
-      company_name: '',
-      industry: '',
-      company_size: '',
+      profile: {
+        phone_number: '',
+        company_name: ''
+      }
     });
   };
 
   const validateForm = () => {
-    if (formData.password !== formData.confirmPassword) {
+    if (formData.password !== formData.password2) {
       setError('Passwords do not match');
       return false;
     }
@@ -58,17 +68,17 @@ function RegistrationPage() {
       setError('Password must be at least 8 characters long');
       return false;
     }
-    if (userType === 'candidate') {
-      if (!formData.first_name || !formData.last_name) {
-        setError('First name and last name are required');
-        return false;
-      }
-    } else {
-      if (!formData.company_name || !formData.industry) {
-        setError('Company name and industry are required');
-        return false;
-      }
+
+    if (userType === 'candidate' && (!formData.first_name || !formData.last_name)) {
+      setError('First name and last name are required for candidates');
+      return false;
     }
+
+    if (userType === 'company' && !formData.profile.company_name) {
+      setError('Company name is required for companies');
+      return false;
+    }
+
     return true;
   };
 
@@ -76,37 +86,26 @@ function RegistrationPage() {
     e.preventDefault();
     setError('');
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
 
     try {
-      // Remove confirmPassword before sending to API
-      const { confirmPassword, ...registrationData } = formData;
-      
-      // Use the appropriate registration function based on user type
       const response = userType === 'candidate' 
-        ? await registerCandidate(registrationData)
-        : await registerCompany(registrationData);
-      
+        ? await registerCandidate(formData)
+        : await registerCompany(formData);
+
       const { access, refresh } = response.data;
-      
-      // Store tokens
       localStorage.setItem('accessToken', access);
       localStorage.setItem('refreshToken', refresh);
-      
-      // Redirect to dashboard
       navigate('/dashboard');
+
     } catch (err) {
-      // Enhanced error handling to show more detailed error messages
       const errorData = err.response?.data;
       let errorMessage = 'Registration failed. Please try again.';
-      
+
       if (errorData) {
         if (typeof errorData === 'object') {
-          // Handle multiple validation errors
           const errorMessages = Object.entries(errorData)
             .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
             .join('\n');
@@ -117,7 +116,7 @@ function RegistrationPage() {
           errorMessage = errorData.detail;
         }
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -147,7 +146,53 @@ function RegistrationPage() {
             </select>
           </div>
 
-          {/* Common fields */}
+          {/* Candidate only fields */}
+          {userType === 'candidate' && (
+            <>
+              <div className="form-group">
+                <label htmlFor="first_name">First Name</label>
+                <input
+                  type="text"
+                  id="first_name"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter your first name"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="last_name">Last Name</label>
+                <input
+                  type="text"
+                  id="last_name"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  required
+                  placeholder="Enter your last name"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Company only field */}
+          {userType === 'company' && (
+            <div className="form-group">
+              <label htmlFor="company_name">Company Name</label>
+              <input
+                type="text"
+                id="company_name"
+                name="profile.company_name"
+                value={formData.profile.company_name}
+                onChange={handleChange}
+                required
+                placeholder="Enter your company name"
+              />
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -166,95 +211,13 @@ function RegistrationPage() {
             <input
               type="tel"
               id="phone_number"
-              name="phone_number"
-              value={formData.phone_number}
+              name="profile.phone_number"
+              value={formData.profile.phone_number}
               onChange={handleChange}
               placeholder="Enter your phone number"
             />
           </div>
 
-          {/* Candidate-specific fields */}
-          {userType === 'candidate' && (
-            <>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="first_name">First Name</label>
-                  <input
-                    type="text"
-                    id="first_name"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter your first name"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="last_name">Last Name</label>
-                  <input
-                    type="text"
-                    id="last_name"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter your last name"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Company-specific fields */}
-          {userType === 'company' && (
-            <>
-              <div className="form-group">
-                <label htmlFor="company_name">Company Name</label>
-                <input
-                  type="text"
-                  id="company_name"
-                  name="company_name"
-                  value={formData.company_name}
-                  onChange={handleChange}
-                  required
-                  placeholder="Enter your company name"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="industry">Industry</label>
-                <input
-                  type="text"
-                  id="industry"
-                  name="industry"
-                  value={formData.industry}
-                  onChange={handleChange}
-                  required
-                  placeholder="Enter your industry"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="company_size">Company Size</label>
-                <select
-                  id="company_size"
-                  name="company_size"
-                  value={formData.company_size}
-                  onChange={handleChange}
-                >
-                  <option value="">Select company size</option>
-                  <option value="1-10">1-10 employees</option>
-                  <option value="11-50">11-50 employees</option>
-                  <option value="51-200">51-200 employees</option>
-                  <option value="201-500">201-500 employees</option>
-                  <option value="501+">501+ employees</option>
-                </select>
-              </div>
-            </>
-          )}
-
-          {/* Password fields */}
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <input
@@ -269,12 +232,12 @@ function RegistrationPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+            <label htmlFor="password2">Confirm Password</label>
             <input
               type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
+              id="password2"
+              name="password2"
+              value={formData.password2}
               onChange={handleChange}
               required
               placeholder="Confirm your password"
