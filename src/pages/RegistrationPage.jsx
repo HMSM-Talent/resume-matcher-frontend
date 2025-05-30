@@ -12,50 +12,31 @@ function RegistrationPage() {
     password2: '',
     first_name: '',
     last_name: '',
-    profile: {
-      phone_number: '',
-      company_name: ''
-    }
+    phone_number: '',
+    company_name: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    // Nested fields (profile.phone_number or profile.company_name)
-    if (name.startsWith('profile.')) {
-      const profileField = name.split('.')[1];
-      setFormData(prev => ({
-        ...prev,
-        profile: {
-          ...prev.profile,
-          [profileField]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleUserTypeChange = (e) => {
     const newType = e.target.value;
     setUserType(newType);
-
-    // Reset form for new user type
     setFormData({
       email: '',
       password: '',
       password2: '',
       first_name: '',
       last_name: '',
-      profile: {
-        phone_number: '',
-        company_name: ''
-      }
+      phone_number: '',
+      company_name: ''
     });
   };
 
@@ -74,7 +55,7 @@ function RegistrationPage() {
       return false;
     }
 
-    if (userType === 'company' && !formData.profile.company_name) {
+    if (userType === 'company' && !formData.company_name) {
       setError('Company name is required for companies');
       return false;
     }
@@ -85,29 +66,56 @@ function RegistrationPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
+  
     if (!validateForm()) return;
-
     setLoading(true);
-
+  
     try {
-      const response = userType === 'candidate' 
-        ? await registerCandidate(formData)
-        : await registerCompany(formData);
-
+      let payload;
+      let response;
+  
+      if (userType === 'candidate') {
+        payload = {
+          email: formData.email,
+          password: formData.password,
+          password2: formData.password2,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          profile: {
+            phone_number: formData.phone_number,
+          }
+        };
+        response = await registerCandidate(payload);
+      } else {
+        payload = {
+          email: formData.email,
+          password: formData.password,
+          password2: formData.password2,
+          profile: {
+            phone_number: formData.phone_number,
+            company_name: formData.company_name
+          }
+        };
+        response = await registerCompany(payload);
+      }
+  
       const { access, refresh } = response.data;
       localStorage.setItem('accessToken', access);
       localStorage.setItem('refreshToken', refresh);
       navigate('/dashboard');
-
+  
     } catch (err) {
+      console.error('Full Registration Error:', err);
+  
       const errorData = err.response?.data;
       let errorMessage = 'Registration failed. Please try again.';
-
+  
       if (errorData) {
         if (typeof errorData === 'object') {
           const errorMessages = Object.entries(errorData)
-            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .map(([field, messages]) =>
+              `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`
+            )
             .join('\n');
           errorMessage = errorMessages || errorData.detail || errorMessage;
         } else if (typeof errorData === 'string') {
@@ -116,8 +124,9 @@ function RegistrationPage() {
           errorMessage = errorData.detail;
         }
       }
-
+  
       setError(errorMessage);
+  
     } finally {
       setLoading(false);
     }
@@ -146,7 +155,6 @@ function RegistrationPage() {
             </select>
           </div>
 
-          {/* Candidate only fields */}
           {userType === 'candidate' && (
             <>
               <div className="form-group">
@@ -177,15 +185,14 @@ function RegistrationPage() {
             </>
           )}
 
-          {/* Company only field */}
           {userType === 'company' && (
             <div className="form-group">
               <label htmlFor="company_name">Company Name</label>
               <input
                 type="text"
                 id="company_name"
-                name="profile.company_name"
-                value={formData.profile.company_name}
+                name="company_name"
+                value={formData.company_name}
                 onChange={handleChange}
                 required
                 placeholder="Enter your company name"
@@ -211,8 +218,8 @@ function RegistrationPage() {
             <input
               type="tel"
               id="phone_number"
-              name="profile.phone_number"
-              value={formData.profile.phone_number}
+              name="phone_number"
+              value={formData.phone_number}
               onChange={handleChange}
               placeholder="Enter your phone number"
             />
@@ -244,8 +251,8 @@ function RegistrationPage() {
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="register-button"
             disabled={loading}
           >

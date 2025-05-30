@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const response = await api.get('/accounts/me/');
+      const response = await api.get('/auth/me/');
       setUser(response.data);
     } catch (error) {
       // If token is invalid, clear it

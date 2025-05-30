@@ -7,16 +7,7 @@ const api = axios.create({
   },
 });
 
-<<<<<<< Updated upstream
-export const setAuthToken = (token) => {
-  if (token) {
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
-    delete api.defaults.headers.common['Authorization'];
-  }
-};
-=======
-// Request interceptor
+// Request interceptor to attach JWT token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
@@ -25,35 +16,29 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor for token refresh
+// Response interceptor for automatic token refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // If error is 401 and we haven't tried to refresh token yet
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        const response = await axios.post('http://127.0.0.1:8000/api/auth/token/refresh/', {
-          refresh: refreshToken
+        const response = await axios.post(`${api.defaults.baseURL}/auth/token/refresh/`, {
+          refresh: refreshToken,
         });
 
         const { access } = response.data;
         localStorage.setItem('accessToken', access);
-
-        // Retry the original request with new token
         originalRequest.headers.Authorization = `Bearer ${access}`;
-        return axios(originalRequest);
+
+        return api(originalRequest);
       } catch (refreshError) {
-        // If refresh token fails, logout user
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         window.location.href = '/';
@@ -64,9 +49,8 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
->>>>>>> Stashed changes
 
-// API functions
+// AUTHENTICATION
 export const registerCandidate = (data) => {
   return api.post('/auth/candidate/register/', data);
 };
@@ -89,6 +73,27 @@ export const getCurrentUser = () => {
 
 export const updateUserProfile = (userData) => {
   return api.patch('/auth/me/', userData);
+};
+
+// FILE UPLOADS
+export const uploadResume = (formData) => {
+  return api.post('/upload/resume/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+export const uploadJobDescription = (formData) => {
+  return api.post('/upload/job-description/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+export const getSimilarityScores = () => {
+  return api.get('/similarity-scores/');
 };
 
 export default api;
