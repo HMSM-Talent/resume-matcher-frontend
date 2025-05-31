@@ -85,15 +85,25 @@ export const uploadResume = (formData) => {
 };
 
 export const uploadJobDescription = (formData) => {
+  // Log the FormData contents for debugging
+  for (let pair of formData.entries()) {
+    console.log(pair[0] + ': ' + pair[1]);
+  }
+
   return api.post('/upload/job-description/', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data'
+      'Content-Type': 'multipart/form-data',
+      'Accept': 'application/json'
     }
   });
 };
 
 export const getSimilarityScores = () => {
-  return api.get('/similarity-scores/');
+  return api.get('/similarity-scores/', {
+    params: {
+      candidate_id: JSON.parse(localStorage.getItem('userData'))?.id
+    }
+  });
 };
 
 export default api;

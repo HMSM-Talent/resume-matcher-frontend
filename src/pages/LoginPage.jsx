@@ -23,9 +23,21 @@ function LoginPage() {
       const response = await login(formData);
       const { access, refresh, user } = response.data;
 
+      // Store tokens
       localStorage.setItem('accessToken', access);
       localStorage.setItem('refreshToken', refresh);
-      localStorage.setItem('userData', JSON.stringify(user));
+      
+      // Store complete user data
+      const userData = {
+        ...user,
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        email: user.email,
+        role: user.role,
+        company_name: user.company_name || '',
+        phone_number: user.phone_number || ''
+      };
+      localStorage.setItem('userData', JSON.stringify(userData));
 
       // 🔀 Dynamic redirection based on user role
       if (user.role === 'candidate') {
@@ -97,7 +109,7 @@ function LoginPage() {
         </form>
 
         <p className="register-link">
-          Don’t have an account? <Link to="/register">Register here</Link>
+          Don't have an account? <Link to="/register">Register here</Link>
         </p>
       </section>
     </main>

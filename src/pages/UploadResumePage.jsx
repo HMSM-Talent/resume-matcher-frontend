@@ -11,6 +11,7 @@ function UploadResumePage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [role, setRole] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -28,9 +29,26 @@ function UploadResumePage() {
   }, []);
 
   const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
-    setErrorMsg('');
-    setSuccessMsg('');
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setErrorMsg('File size must be less than 5MB');
+        setSelectedFile(null);
+        return;
+      }
+      // Check file type
+      const validTypes = ['.pdf', '.doc', '.docx'];
+      const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+      if (!validTypes.includes(fileExtension)) {
+        setErrorMsg('Please upload a PDF or Word document');
+        setSelectedFile(null);
+        return;
+      }
+      setSelectedFile(file);
+      setErrorMsg('');
+      setSuccessMsg('');
+    }
   };
 
   const handleUpload = async () => {
@@ -44,6 +62,10 @@ function UploadResumePage() {
       return;
     }
 
+    setIsUploading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
     const form = new FormData();
     form.append('file', selectedFile);
 
@@ -54,8 +76,10 @@ function UploadResumePage() {
       setShowConfirm(false);
       setResumeExists(true);
     } catch (err) {
-      setErrorMsg('Upload failed. Ensure it’s a valid PDF and within the size limit.');
+      setErrorMsg('Upload failed. Ensure it\'s a valid PDF and within the size limit.');
       setSuccessMsg('');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -73,25 +97,66 @@ function UploadResumePage() {
     <div className="upload-resume-container">
       <div className="upload-resume-card">
         <h2>Upload Resume</h2>
+        <p className="subtitle">Upload your resume to get started</p>
 
-        <input type="file" onChange={handleFileChange} />
+        {errorMsg && <div className="error-message">{errorMsg}</div>}
+        {successMsg && <div className="success-message">{successMsg}</div>}
 
-        {showConfirm ? (
-          <div>
-            <p>🚨 You already have a resume. Do you want to replace it?</p>
-            <button onClick={handleUpload}>Yes, Replace</button>
-            <button className="secondary-button" onClick={() => setShowConfirm(false)}>No, Keep Existing</button>
+        <div className="form-group">
+          <label htmlFor="file">Resume File *</label>
+          <input
+            type="file"
+            id="file"
+            accept=".pdf,.doc,.docx"
+            onChange={handleFileChange}
+            disabled={isUploading}
+            className="w-full"
+          />
+          <p className="text-sm text-gray-500 mt-1">
+            Supported formats: PDF, DOC, DOCX (max 5MB)
+          </p>
+        </div>
+
+        {showConfirm && (
+          <div className="confirmation-message">
+            <p>You already have a resume uploaded. Uploading a new one will replace the existing one.</p>
+            <div className="button-group">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="secondary-button"
+                disabled={isUploading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpload}
+                className="primary-button"
+                disabled={isUploading}
+              >
+                {isUploading ? 'Uploading...' : 'Confirm Upload'}
+              </button>
+            </div>
           </div>
-        ) : (
-          <button onClick={handleUpload}>Upload</button>
         )}
 
-        <button className="secondary-button" onClick={handleBackToDashboard}>
-          ⬅ Back to Dashboard
-        </button>
-
-        {errorMsg && <p className="error-text">{errorMsg}</p>}
-        {successMsg && <p className="success-text">{successMsg}</p>}
+        {!showConfirm && (
+          <div className="button-group">
+            <button
+              onClick={handleUpload}
+              disabled={isUploading || !selectedFile}
+              className="primary-button"
+            >
+              {isUploading ? 'Uploading...' : 'Upload Resume'}
+            </button>
+            <button
+              onClick={handleBackToDashboard}
+              className="secondary-button"
+              disabled={isUploading}
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

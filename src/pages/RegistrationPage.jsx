@@ -99,10 +99,19 @@ function RegistrationPage() {
         response = await registerCompany(payload);
       }
   
-      const { access, refresh } = response.data;
+      const { access, refresh, user } = response.data;
       localStorage.setItem('accessToken', access);
       localStorage.setItem('refreshToken', refresh);
-      navigate('/dashboard');
+      localStorage.setItem('userData', JSON.stringify(user));
+
+      // 🔀 Dynamic redirection based on user role
+      if (user.role === 'candidate') {
+        navigate('/candidate/dashboard');
+      } else if (user.role === 'company') {
+        navigate('/company/dashboard');
+      } else {
+        navigate('/dashboard'); // fallback for other roles or admin
+      }
   
     } catch (err) {
       console.error('Full Registration Error:', err);

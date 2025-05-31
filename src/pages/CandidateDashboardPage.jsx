@@ -9,6 +9,12 @@ function CandidateDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [filters, setFilters] = useState({
+    jobType: '',
+    experienceLevel: '',
+    minScore: 0,
+  });
+  const [sortBy, setSortBy] = useState('score');
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -28,10 +34,17 @@ function CandidateDashboard() {
           phone_number: userRes.data.phone_number || ''
         });
 
-        const scoreRes = await getSimilarityScores();
-        setSimilarJobs(scoreRes.data);
+        try {
+          const scoreRes = await getSimilarityScores();
+          console.log('Similarity scores response:', scoreRes.data);
+          setSimilarJobs(Array.isArray(scoreRes.data.results) ? scoreRes.data.results : []);
+        } catch (scoreErr) {
+          console.error('Failed to fetch similarity scores:', scoreErr);
+          console.error('Error details:', scoreErr.response?.data);
+          setSimilarJobs([]);
+        }
       } catch (err) {
-        setError('Failed to load user or matches.');
+        setError('Failed to load user data.');
         if (err.response?.status === 401) navigate('/login');
       } finally {
         setLoading(false);
@@ -56,7 +69,31 @@ function CandidateDashboard() {
     }
   };
 
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSortChange = (e) => {
+    setSortBy(e.target.value);
+  };
+
+  const filteredAndSortedJobs = similarJobs
+    .filter(job => {
+      if (filters.jobType && job.job_description?.job_type !== filters.jobType) return false;
+      if (filters.experienceLevel && job.job_description?.experience_level !== filters.experienceLevel) return false;
+      if (filters.minScore > 0 && job.score < filters.minScore) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'score') return b.score - a.score;
+      if (sortBy === 'date') return new Date(b.created_at) - new Date(a.created_at);
+      return 0;
+    });
+
   if (loading) return <div>Loading...</div>;
+  if (error) return <div className="error-message">{error}</div>;
+  if (!user) return <div>No user data available</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -98,19 +135,80 @@ function CandidateDashboard() {
           Sign out
         </button>
 
-        {error && <p className="text-red-600 mt-4">{error}</p>}
-
         <hr className="my-6" />
+
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <h3 className="text-lg font-semibold mb-3">Filter Jobs</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <select
+              name="jobType"
+              value={filters.jobType}
+              onChange={handleFilterChange}
+              className="border rounded p-2"
+            >
+              <option value="">All Job Types</option>
+              <option value="full-time">Full Time</option>
+              <option value="part-time">Part Time</option>
+              <option value="contract">Contract</option>
+              <option value="internship">Internship</option>
+            </select>
+
+            <select
+              name="experienceLevel"
+              value={filters.experienceLevel}
+              onChange={handleFilterChange}
+              className="border rounded p-2"
+            >
+              <option value="">All Experience Levels</option>
+              <option value="entry">Entry Level</option>
+              <option value="mid">Mid Level</option>
+              <option value="senior">Senior Level</option>
+              <option value="lead">Lead Level</option>
+            </select>
+
+            <div className="flex items-center gap-2">
+              <label>Min Score:</label>
+              <input
+                type="range"
+                name="minScore"
+                min="0"
+                max="1"
+                step="0.1"
+                value={filters.minScore}
+                onChange={handleFilterChange}
+                className="w-full"
+              />
+              <span>{(filters.minScore * 100).toFixed(0)}%</span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <label className="mr-2">Sort by:</label>
+            <select
+              value={sortBy}
+              onChange={handleSortChange}
+              className="border rounded p-2"
+            >
+              <option value="score">Score</option>
+              <option value="date">Date</option>
+            </select>
+          </div>
+        </div>
+
         <h2 className="text-xl font-semibold mb-3">Top Matching Job Descriptions</h2>
-        {similarJobs.length === 0 ? (
+        {!filteredAndSortedJobs || filteredAndSortedJobs.length === 0 ? (
           <p>No matches found yet. Please upload a resume.</p>
         ) : (
           <ul className="space-y-4">
-            {similarJobs.map((item) => (
+            {filteredAndSortedJobs.map((item) => (
               <li key={item.id} className="p-4 border rounded shadow-sm bg-gray-100">
-                <p className="font-bold text-lg">{item.job_description.title || 'Untitled Position'}</p>
+                <p className="font-bold text-lg">{item.job_description?.title || 'Untitled Position'}</p>
                 <p className="text-gray-700">
-                  {item.job_description.company_name} – {item.job_description.location}
+                  {item.job_description?.company_name} – {item.job_description?.location}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Job Type: {item.job_description?.job_type || 'Not specified'} • 
+                  Experience: {item.job_description?.experience_level || 'Not specified'}
                 </p>
                 <p className="text-sm text-gray-500">
                   Match Score: <strong>{(item.score * 100).toFixed(1)}%</strong>
