@@ -1,3 +1,5 @@
+import React from 'react';
+
 function DashboardPage() {
   return (
     <div>
@@ -5,3 +7,5 @@ function DashboardPage() {
     </div>
   );
 }
+
+export default DashboardPage;
