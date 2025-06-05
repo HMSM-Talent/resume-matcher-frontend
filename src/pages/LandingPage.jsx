@@ -43,6 +43,36 @@ const LandingPage = () => {
             <h3>Insightful Analytics</h3>
             <p>Track performance and understand what companies want.</p>
           </div>
+          <div className="feature-item">
+            <span>🔒</span>
+            <h3>Secure Platform</h3>
+            <p>Your data is protected with enterprise-grade security.</p>
+          </div>
+          <div className="feature-item">
+            <span>🤝</span>
+            <h3>Smart Networking</h3>
+            <p>Connect with the right professionals and opportunities.</p>
+          </div>
+          <div className="feature-item">
+            <span>📈</span>
+            <h3>Career Growth</h3>
+            <p>Continuous learning and development opportunities.</p>
+          </div>
+          <div className="feature-item">
+            <span>🌐</span>
+            <h3>Global Reach</h3>
+            <p>Access opportunities from companies worldwide.</p>
+          </div>
+          <div className="feature-item">
+            <span>💼</span>
+            <h3>Job Alerts</h3>
+            <p>Get notified about matching opportunities instantly.</p>
+          </div>
+          <div className="feature-item">
+            <span>📱</span>
+            <h3>Mobile Friendly</h3>
+            <p>Access the platform anytime, anywhere.</p>
+          </div>
         </div>
       </section>
 
@@ -99,7 +129,7 @@ const LandingPage = () => {
         <h3>Quick Links</h3>
         <div className="links-grid">
           <div className="link-column">
-            <h4> Candidates</h4>
+            <h4>Candidates</h4>
             <ul>
               <li><Link to="/register">Create Account</Link></li>
               <li><Link to="/login">Sign In</Link></li>
@@ -108,7 +138,7 @@ const LandingPage = () => {
             </ul>
           </div>
           <div className="link-column">
-            <h4> Companies</h4>
+            <h4>Companies</h4>
             <ul>
               <li><Link to="/register">Post Jobs</Link></li>
               <li><Link to="/login">Company Login</Link></li>
@@ -121,10 +151,8 @@ const LandingPage = () => {
             <ul>
               <li><Link to="/help">About</Link></li>
               <li><Link to="/privacy">Privacy</Link></li>
-              <li><Link to="/contact Us">Contact Us</Link></li>
-              <li><Link to="/terms & conditions">Terms & Conditions</Link></li>
-              
-
+              <li><Link to="/contact">Contact Us</Link></li>
+              <li><Link to="/terms">Terms & Conditions</Link></li>
             </ul>
           </div>
         </div>

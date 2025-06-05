@@ -64,7 +64,7 @@ body {
   padding: 0.6rem 5rem 4rem;
   border-radius: 0 0 12px 12px;
   width: 100vw;
-  margin: 2rem 0 0;
+  margin: 1.5rem 0 0;
   box-sizing: border-box;
   position: relative;
   left: 0;
@@ -121,6 +121,7 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   width: 90%;
+  background-color: #ffffff;
 }
 
 .features h2 {
@@ -130,20 +131,25 @@ body {
 }
 
 .feature-grid {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
-  flex-wrap: nowrap;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .feature-item {
-  flex: 1;
   background-color: #f9f9f9;
   padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 1px 5px rgba(0,0,0,0.05);
   text-align: center;
-  min-width: 250px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
 .feature-item span {
@@ -156,12 +162,26 @@ body {
   font-size: 1.2rem;
   font-weight: bold;
   margin-bottom: 0.8rem;
+  color: #333;
 }
 
 .feature-item p {
   font-size: 0.95rem;
   color: #666;
   line-height: 1.5;
+}
+
+/* Responsive grid for smaller screens */
+@media (max-width: 1024px) {
+  .feature-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Quick Links Section */
@@ -255,17 +275,19 @@ body {
 
 .reviews-grid {
   display: flex;
-  gap: 2rem;
-  justify-content: space-between;
+  flex-direction: row;
+  gap: 1.5rem;
+  overflow-x: auto;
+  padding: 1rem 0;
 }
 
 .review-card {
-  flex: 1;
   background-color: white;
-  padding: 2rem;
+  padding: 1.5rem;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  min-width: 300px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  min-width: 280px;
+  flex: 0 0 auto;
 }
 
 .review-header {
@@ -275,11 +297,11 @@ body {
 }
 
 .reviewer-avatar {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
+  background-color: #e0e0e0;
   border-radius: 50%;
   margin-right: 1rem;
-  background-color: #e0e0e0;
 }
 
 .reviewer-info h4 {
@@ -289,19 +311,29 @@ body {
 }
 
 .reviewer-info p {
-  margin: 0;
+  margin: 0.2rem 0 0;
   font-size: 0.9rem;
   color: #666;
 }
 
 .review-content {
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 0.95rem;
+  line-height: 1.5;
   color: #444;
+  margin-bottom: 1rem;
 }
 
 .review-rating {
   color: #ffd700;
   font-size: 1.2rem;
-  margin-top: 1rem;
+}
+
+/* Hide scrollbar but keep functionality */
+.reviews-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.reviews-grid {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
