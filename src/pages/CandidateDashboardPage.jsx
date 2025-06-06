@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, updateUserProfile, getSimilarityScores } from '../api/api';
+import '../styles/Dashboard.css';
 
 function CandidateDashboard() {
   const navigate = useNavigate();
@@ -91,132 +92,269 @@ function CandidateDashboard() {
       return 0;
     });
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div className="error-message">{error}</div>;
-  if (!user) return <div>No user data available</div>;
+  if (loading) return (
+    <div className="dashboard-container">
+      <div className="dashboard-content">
+        <div className="dashboard-main">
+          <div className="loading-spinner">Loading...</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="dashboard-container">
+      <div className="dashboard-content">
+        <div className="dashboard-main">
+          <div className="error-message">{error}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!user) return (
+    <div className="dashboard-container">
+      <div className="dashboard-content">
+        <div className="dashboard-main">
+          <div className="error-message">No user data available</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const totalJobs = similarJobs.length;
+  const averageScore = similarJobs.length > 0
+    ? (similarJobs.reduce((acc, curr) => acc + curr.score, 0) / similarJobs.length * 100).toFixed(1)
+    : 0;
+  const topMatches = similarJobs.filter(j => j.score >= 0.8).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-3xl mx-auto bg-white p-6 shadow-md rounded-lg">
-        <h1 className="text-2xl font-bold mb-2">Welcome, {user.first_name}</h1>
-        <p className="mb-4 text-gray-700">Role: <strong>Candidate</strong></p>
+    <div className="dashboard-container">
+      <div className="dashboard-content">
+        {/* Sidebar */}
+        <aside className="dashboard-sidebar">
+          <div className="sidebar-header">
+            <h2>{user.first_name ? `${user.first_name}'s Dashboard` : 'Candidate Dashboard'}</h2>
+            <p>Welcome back!</p>
+          </div>
+          
+          <div className="sidebar-menu">
+            <button className="active">
+              <span>📊 Overview</span>
+            </button>
+            <button onClick={() => navigate('/upload-resume')}>
+              <span>📝 Upload Resume</span>
+            </button>
+            <button onClick={() => setIsEditing(!isEditing)}>
+              <span>⚙️ Edit Profile</span>
+            </button>
+            <button onClick={() => {
+              localStorage.clear();
+              navigate('/');
+            }}>
+              <span>🚪 Sign Out</span>
+            </button>
+          </div>
+        </aside>
 
-        <button
-          onClick={() => setIsEditing(!isEditing)}
-          className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          {isEditing ? 'Cancel' : 'Edit Profile'}
-        </button>
+        {/* Main Content */}
+        <main className="dashboard-main">
+          <div className="dashboard-header">
+            <h1>Job Matches Overview</h1>
+            {isEditing && (
+              <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>
+                Cancel Editing
+              </button>
+            )}
+          </div>
 
-        {isEditing && (
-          <form onSubmit={handleSubmit} className="space-y-3 mb-6">
-            <input name="first_name" value={formData.first_name} onChange={handleChange} placeholder="First Name" className="w-full border px-3 py-2 rounded" />
-            <input name="last_name" value={formData.last_name} onChange={handleChange} placeholder="Last Name" className="w-full border px-3 py-2 rounded" />
-            <input name="email" value={formData.email} onChange={handleChange} placeholder="Email" className="w-full border px-3 py-2 rounded" />
-            <input name="phone_number" value={formData.phone_number} onChange={handleChange} placeholder="Phone Number" className="w-full border px-3 py-2 rounded" />
-            <button type="submit" className="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700">Save Changes</button>
-          </form>
-        )}
-
-        <button
-          onClick={() => navigate('/upload-resume')}
-          className="mb-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-        >
-          Go to Upload Resume
-        </button>
-
-        <button
-          onClick={() => {
-            localStorage.clear();
-            navigate('/');
-          }}
-          className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-        >
-          Sign out
-        </button>
-
-        <hr className="my-6" />
-
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-lg font-semibold mb-3">Filter Jobs</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <select
-              name="jobType"
-              value={filters.jobType}
-              onChange={handleFilterChange}
-              className="border rounded p-2"
-            >
-              <option value="">All Job Types</option>
-              <option value="full-time">Full Time</option>
-              <option value="part-time">Part Time</option>
-              <option value="contract">Contract</option>
-              <option value="internship">Internship</option>
-            </select>
-
-            <select
-              name="experienceLevel"
-              value={filters.experienceLevel}
-              onChange={handleFilterChange}
-              className="border rounded p-2"
-            >
-              <option value="">All Experience Levels</option>
-              <option value="entry">Entry Level</option>
-              <option value="mid">Mid Level</option>
-              <option value="senior">Senior Level</option>
-              <option value="lead">Lead Level</option>
-            </select>
-
-            <div className="flex items-center gap-2">
-              <label>Min Score:</label>
-              <input
-                type="range"
-                name="minScore"
-                min="0"
-                max="1"
-                step="0.1"
-                value={filters.minScore}
-                onChange={handleFilterChange}
-                className="w-full"
-              />
-              <span>{(filters.minScore * 100).toFixed(0)}%</span>
+          {/* Stats Grid */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Total Job Matches</h3>
+              <div className="value">{totalJobs}</div>
+            </div>
+            <div className="stat-card">
+              <h3>Average Match Score</h3>
+              <div className="value">{averageScore}%</div>
+            </div>
+            <div className="stat-card">
+              <h3>Top Matches (80%+)</h3>
+              <div className="value">{topMatches}</div>
             </div>
           </div>
 
-          <div className="mt-4">
-            <label className="mr-2">Sort by:</label>
-            <select
-              value={sortBy}
-              onChange={handleSortChange}
-              className="border rounded p-2"
-            >
-              <option value="score">Score</option>
-              <option value="date">Date</option>
-            </select>
-          </div>
-        </div>
+          {/* Profile Edit Form */}
+          {isEditing && (
+            <div className="filters-section">
+              <h3 className="text-lg font-semibold mb-4">Edit Profile</h3>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="filter-group">
+                  <label htmlFor="first_name">First Name</label>
+                  <input
+                    id="first_name"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    placeholder="Enter first name"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label htmlFor="last_name">Last Name</label>
+                  <input
+                    id="last_name"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    placeholder="Enter last name"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Enter email"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label htmlFor="phone_number">Phone Number</label>
+                  <input
+                    id="phone_number"
+                    name="phone_number"
+                    value={formData.phone_number}
+                    onChange={handleChange}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary">
+                  Save Changes
+                </button>
+              </form>
+            </div>
+          )}
 
-        <h2 className="text-xl font-semibold mb-3">Top Matching Job Descriptions</h2>
-        {!filteredAndSortedJobs || filteredAndSortedJobs.length === 0 ? (
-          <p>No matches found yet. Please upload a resume.</p>
-        ) : (
-          <ul className="space-y-4">
-            {filteredAndSortedJobs.map((item) => (
-              <li key={item.id} className="p-4 border rounded shadow-sm bg-gray-100">
-                <p className="font-bold text-lg">{item.job_description?.title || 'Untitled Position'}</p>
-                <p className="text-gray-700">
-                  {item.job_description?.company_name} – {item.job_description?.location}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Job Type: {item.job_description?.job_type || 'Not specified'} • 
-                  Experience: {item.job_description?.experience_level || 'Not specified'}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Match Score: <strong>{(item.score * 100).toFixed(1)}%</strong>
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
+          {/* Filters Section */}
+          <div className="filters-section">
+            <h3 className="text-lg font-semibold mb-4">Filter Jobs</h3>
+            <div className="filters-grid">
+              <div className="filter-group">
+                <label htmlFor="jobType">Job Type</label>
+                <select
+                  id="jobType"
+                  name="jobType"
+                  value={filters.jobType}
+                  onChange={handleFilterChange}
+                >
+                  <option value="">All Job Types</option>
+                  <option value="full-time">Full Time</option>
+                  <option value="part-time">Part Time</option>
+                  <option value="contract">Contract</option>
+                  <option value="internship">Internship</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label htmlFor="experienceLevel">Experience Level</label>
+                <select
+                  id="experienceLevel"
+                  name="experienceLevel"
+                  value={filters.experienceLevel}
+                  onChange={handleFilterChange}
+                >
+                  <option value="">All Experience Levels</option>
+                  <option value="entry">Entry Level</option>
+                  <option value="mid">Mid Level</option>
+                  <option value="senior">Senior Level</option>
+                  <option value="lead">Lead Level</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label htmlFor="minScore">Minimum Match Score</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    id="minScore"
+                    name="minScore"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={filters.minScore}
+                    onChange={handleFilterChange}
+                    className="w-full"
+                  />
+                  <span className="text-sm text-gray-600">{(filters.minScore * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+
+              <div className="filter-group">
+                <label htmlFor="sortBy">Sort By</label>
+                <select
+                  id="sortBy"
+                  value={sortBy}
+                  onChange={handleSortChange}
+                >
+                  <option value="score">Match Score</option>
+                  <option value="date">Date</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Results List */}
+          <div className="results-list">
+            <h2 className="text-xl font-semibold mb-4">Top Matching Jobs</h2>
+            {!filteredAndSortedJobs || filteredAndSortedJobs.length === 0 ? (
+              <div className="result-card">
+                <p className="text-gray-600">No matches found yet. Please upload your resume.</p>
+              </div>
+            ) : (
+              filteredAndSortedJobs.map((item) => (
+                <div key={item.id} className="result-card">
+                  <div className="result-header">
+                    <div>
+                      <h3 className="result-title">{item.job_description?.title || 'Untitled Position'}</h3>
+                      <div className="result-meta">
+                        <span>{item.job_description?.company_name}</span>
+                        <span>•</span>
+                        <span>{item.job_description?.location}</span>
+                        <span>•</span>
+                        <span>Type: {item.job_description?.job_type || 'Not specified'}</span>
+                        <span>•</span>
+                        <span>Experience: {item.job_description?.experience_level || 'Not specified'}</span>
+                      </div>
+                    </div>
+                    <div className="result-score">
+                      {(item.score * 100).toFixed(1)}% Match
+                    </div>
+                  </div>
+                  <div className="result-details">
+                    <p className="text-sm text-gray-500 mb-2">
+                      Posted: {new Date(item.created_at).toLocaleDateString()}
+                    </p>
+                    {item.job_description?.file && (
+                      <button
+                        onClick={() => {
+                          const fileUrl = item.job_description.file.startsWith('http')
+                            ? item.job_description.file
+                            : `${process.env.REACT_APP_API_URL || ''}${item.job_description.file}`;
+                          window.open(fileUrl, '_blank');
+                        }}
+                        className="btn btn-secondary"
+                      >
+                        View Job Description
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </main>
       </div>
     </div>
   );

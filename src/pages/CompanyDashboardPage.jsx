@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, updateUserProfile, getSimilarityScores } from '../api/api';
+import '../styles/Dashboard.css';
 
 function CompanyDashboard() {
   const navigate = useNavigate();
@@ -90,180 +91,247 @@ function CompanyDashboard() {
       return 0;
     });
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div className="error-message">{error}</div>;
-  if (!user) return <div>No user data available</div>;
+  if (loading) return (
+    <div className="dashboard-container">
+      <div className="dashboard-content">
+        <div className="dashboard-main">
+          <div className="loading-spinner">Loading...</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="dashboard-container">
+      <div className="dashboard-content">
+        <div className="dashboard-main">
+          <div className="error-message">{error}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!user) return (
+    <div className="dashboard-container">
+      <div className="dashboard-content">
+        <div className="dashboard-main">
+          <div className="error-message">No user data available</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const totalCandidates = similarCandidates.length;
+  const averageScore = similarCandidates.length > 0
+    ? (similarCandidates.reduce((acc, curr) => acc + curr.score, 0) / similarCandidates.length * 100).toFixed(1)
+    : 0;
+  const topMatches = similarCandidates.filter(c => c.score >= 0.8).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-3xl mx-auto bg-white p-6 shadow-md rounded-lg">
-        <h1 className="text-2xl font-bold mb-2">Welcome, {user.company_name || user.email}</h1>
-        <p className="mb-4 text-gray-700">Role: <strong>Company</strong></p>
-
-        <button
-          onClick={() => setIsEditing(!isEditing)}
-          className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          {isEditing ? 'Cancel' : 'Edit Profile'}
-        </button>
-
-        {isEditing && (
-          <form onSubmit={handleSubmit} className="space-y-3 mb-6">
-            <input
-              name="company_name"
-              value={formData.company_name}
-              onChange={handleChange}
-              placeholder="Company Name"
-              className="w-full border px-3 py-2 rounded"
-            />
-            <input
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Email"
-              className="w-full border px-3 py-2 rounded"
-            />
-            <input
-              name="phone_number"
-              value={formData.phone_number}
-              onChange={handleChange}
-              placeholder="Phone Number"
-              className="w-full border px-3 py-2 rounded"
-            />
-            <button
-              type="submit"
-              className="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700"
-            >
-              Save Changes
+    <div className="dashboard-container">
+      <div className="dashboard-content">
+        {/* Sidebar */}
+        <aside className="dashboard-sidebar">
+          <div className="sidebar-header">
+            <h2>{user.company_name || 'Company Dashboard'}</h2>
+            <p>Welcome back!</p>
+          </div>
+          
+          <div className="sidebar-menu">
+            <button className="active">
+              <span>📊 Overview</span>
             </button>
-          </form>
-        )}
+            <button onClick={() => navigate('/upload-jd')}>
+              <span>📝 Upload Job Description</span>
+            </button>
+            <button onClick={() => setIsEditing(!isEditing)}>
+              <span>⚙️ Edit Profile</span>
+            </button>
+            <button onClick={() => {
+              localStorage.clear();
+              navigate('/');
+            }}>
+              <span>🚪 Sign Out</span>
+            </button>
+          </div>
+        </aside>
 
-        <button
-          onClick={() => navigate('/upload-jd')}
-          className="mb-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-        >
-          Go to Upload Job Description
-        </button>
+        {/* Main Content */}
+        <main className="dashboard-main">
+          <div className="dashboard-header">
+            <h1>Company Overview</h1>
+            {isEditing && (
+              <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>
+                Cancel Editing
+              </button>
+            )}
+          </div>
 
-        <button
-          onClick={() => {
-            localStorage.clear();
-            navigate('/');
-          }}
-          className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-        >
-          Sign out
-        </button>
-
-        <hr className="my-6" />
-
-        {/* Filters Section */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-lg font-semibold mb-3">Filter Candidates</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <select
-              name="experienceLevel"
-              value={filters.experienceLevel}
-              onChange={handleFilterChange}
-              className="border rounded p-2"
-            >
-              <option value="">All Experience Levels</option>
-              <option value="entry">Entry Level</option>
-              <option value="mid">Mid Level</option>
-              <option value="senior">Senior Level</option>
-              <option value="lead">Lead Level</option>
-            </select>
-
-            <div className="flex items-center gap-2">
-              <label>Min Score:</label>
-              <input
-                type="range"
-                name="minScore"
-                min="0"
-                max="1"
-                step="0.1"
-                value={filters.minScore}
-                onChange={handleFilterChange}
-                className="w-full"
-              />
-              <span>{(filters.minScore * 100).toFixed(0)}%</span>
+          {/* Stats Grid */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Total Candidates</h3>
+              <div className="value">{totalCandidates}</div>
+            </div>
+            <div className="stat-card">
+              <h3>Average Match Score</h3>
+              <div className="value">{averageScore}%</div>
+            </div>
+            <div className="stat-card">
+              <h3>Top Matches (80%+)</h3>
+              <div className="value">{topMatches}</div>
             </div>
           </div>
 
-          <div className="mt-4">
-            <label className="mr-2">Sort by:</label>
-            <select
-              value={sortBy}
-              onChange={handleSortChange}
-              className="border rounded p-2"
-            >
-              <option value="score">Score</option>
-              <option value="date">Date</option>
-            </select>
-          </div>
-        </div>
+          {/* Profile Edit Form */}
+          {isEditing && (
+            <div className="filters-section">
+              <h3 className="text-lg font-semibold mb-4">Edit Company Profile</h3>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="filter-group">
+                  <label htmlFor="company_name">Company Name</label>
+                  <input
+                    id="company_name"
+                    name="company_name"
+                    value={formData.company_name}
+                    onChange={handleChange}
+                    placeholder="Enter company name"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Enter email"
+                  />
+                </div>
+                <div className="filter-group">
+                  <label htmlFor="phone_number">Phone Number</label>
+                  <input
+                    id="phone_number"
+                    name="phone_number"
+                    value={formData.phone_number}
+                    onChange={handleChange}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary">
+                  Save Changes
+                </button>
+              </form>
+            </div>
+          )}
 
-        {/* Candidate Matches Section */}
-        <h2 className="text-xl font-semibold mb-3">Top Matching Candidates</h2>
-        {!filteredAndSortedCandidates || filteredAndSortedCandidates.length === 0 ? (
-          <p>No matches found yet. Please upload a job description.</p>
-        ) : (
-          <ul className="space-y-4">
-            {filteredAndSortedCandidates.map((item) => {
-              console.log('Candidate item:', item);
-              const candidateName = item.resume?.user?.first_name && item.resume?.user?.last_name
-                ? `${item.resume.user.first_name} ${item.resume.user.last_name}`
-                : 'Anonymous Candidate';
-              
-              return (
-                <li key={item.id} className="p-4 border rounded shadow-sm bg-gray-100">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-bold text-lg">
-                        {candidateName}
-                      </p>
-                      <p className="text-gray-700">
-                        {item.resume?.user?.email || 'Email not available'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Experience: {item.resume?.experience_level || 'Not specified'} • 
-                        Skills: {item.resume?.skills || 'Not specified'}
-                      </p>
+          {/* Filters Section */}
+          <div className="filters-section">
+            <h3 className="text-lg font-semibold mb-4">Filter Candidates</h3>
+            <div className="filters-grid">
+              <div className="filter-group">
+                <label htmlFor="experienceLevel">Experience Level</label>
+                <select
+                  id="experienceLevel"
+                  name="experienceLevel"
+                  value={filters.experienceLevel}
+                  onChange={handleFilterChange}
+                >
+                  <option value="">All Experience Levels</option>
+                  <option value="entry">Entry Level</option>
+                  <option value="mid">Mid Level</option>
+                  <option value="senior">Senior Level</option>
+                  <option value="lead">Lead Level</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label htmlFor="minScore">Minimum Match Score</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    id="minScore"
+                    name="minScore"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={filters.minScore}
+                    onChange={handleFilterChange}
+                    className="w-full"
+                  />
+                  <span className="text-sm text-gray-600">{(filters.minScore * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+
+              <div className="filter-group">
+                <label htmlFor="sortBy">Sort By</label>
+                <select
+                  id="sortBy"
+                  value={sortBy}
+                  onChange={handleSortChange}
+                >
+                  <option value="score">Match Score</option>
+                  <option value="date">Date</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Results List */}
+          <div className="results-list">
+            <h2 className="text-xl font-semibold mb-4">Top Matching Candidates</h2>
+            {!filteredAndSortedCandidates || filteredAndSortedCandidates.length === 0 ? (
+              <div className="result-card">
+                <p className="text-gray-600">No matches found yet. Please upload a job description.</p>
+              </div>
+            ) : (
+              filteredAndSortedCandidates.map((item) => {
+                const candidateName = item.resume?.user?.first_name && item.resume?.user?.last_name
+                  ? `${item.resume.user.first_name} ${item.resume.user.last_name}`
+                  : 'Anonymous Candidate';
+                
+                return (
+                  <div key={item.id} className="result-card">
+                    <div className="result-header">
+                      <div>
+                        <h3 className="result-title">{candidateName}</h3>
+                        <div className="result-meta">
+                          <span>{item.resume?.user?.email || 'Email not available'}</span>
+                          <span>•</span>
+                          <span>Experience: {item.resume?.experience_level || 'Not specified'}</span>
+                          <span>•</span>
+                          <span>Skills: {item.resume?.skills || 'Not specified'}</span>
+                        </div>
+                      </div>
+                      <div className="result-score">
+                        {(item.score * 100).toFixed(1)}% Match
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">
-                        Match Score: <strong>{(item.score * 100).toFixed(1)}%</strong>
-                      </p>
-                      <p className="text-xs text-gray-400">
+                    <div className="result-details">
+                      <p className="text-sm text-gray-500 mb-2">
                         Uploaded: {new Date(item.created_at).toLocaleDateString()}
                       </p>
+                      {item.resume?.file && (
+                        <button
+                          onClick={() => {
+                            const fileUrl = item.resume.file.startsWith('http')
+                              ? item.resume.file
+                              : `${process.env.REACT_APP_API_URL || ''}${item.resume.file}`;
+                            window.open(fileUrl, '_blank');
+                          }}
+                          className="btn btn-secondary"
+                        >
+                          View Resume
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="mt-2">
-                    <button
-                      onClick={() => {
-                        if (item.resume?.file) {
-                          console.log('Opening resume file:', item.resume.file);
-                          const fileUrl = item.resume.file.startsWith('http')
-                            ? item.resume.file
-                            : `${process.env.REACT_APP_API_URL || ''}${item.resume.file}`;
-                          window.open(fileUrl, '_blank');
-                        } else {
-                          console.error('No resume file URL available');
-                          alert('Resume file not available');
-                        }
-                      }}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      View Resume
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                );
+              })
+            )}
+          </div>
+        </main>
       </div>
     </div>
   );
