@@ -23,23 +23,10 @@ function LoginPage() {
       const response = await login(formData);
       const { access, refresh, user } = response.data;
 
-      // Store tokens
       localStorage.setItem('accessToken', access);
       localStorage.setItem('refreshToken', refresh);
-      
-      // Store complete user data
-      const userData = {
-        ...user,
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
-        email: user.email,
-        role: user.role,
-        company_name: user.company_name || '',
-        phone_number: user.phone_number || ''
-      };
-      localStorage.setItem('userData', JSON.stringify(userData));
+      localStorage.setItem('userData', JSON.stringify(user));
 
-      // Dynamic redirection based on user role
       if (user.role === 'candidate') {
         navigate('/candidate/dashboard');
       } else if (user.role === 'company') {
@@ -130,24 +117,22 @@ function LoginPage() {
                 />
               </div>
 
-              <div className="button-group" style={{
+              <div className="button-group" style={{ 
                 marginTop: '1rem',
                 display: 'flex',
                 justifyContent: 'center',
                 width: '100%'
               }}>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
                   disabled={loading}
-                  style={{
+                  style={{ 
                     width: '50%',
                     padding: '0.875rem',
                     fontSize: '1.1rem',
                     fontWeight: '600',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center'
+                    textAlign: 'center'
                   }}
                 >
                   {loading ? 'Signing in...' : 'Sign In'}

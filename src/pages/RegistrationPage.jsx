@@ -104,7 +104,6 @@ function RegistrationPage() {
       localStorage.setItem('refreshToken', refresh);
       localStorage.setItem('userData', JSON.stringify(user));
 
-      // Dynamic redirection based on user role
       if (user.role === 'candidate') {
         navigate('/candidate/dashboard');
       } else if (user.role === 'company') {
@@ -127,8 +126,6 @@ function RegistrationPage() {
           errorMessage = errorMessages || errorData.detail || errorMessage;
         } else if (typeof errorData === 'string') {
           errorMessage = errorData;
-        } else if (errorData.detail) {
-          errorMessage = errorData.detail;
         }
       }
   
@@ -301,7 +298,7 @@ function RegistrationPage() {
                   type="password"
                   id="confirmPassword"
                   name="confirmPassword"
-                  value={formData.confirmPassword}
+                  value={formData.password2}
                   onChange={handleChange}
                   required
                   placeholder="Confirm your password"
@@ -330,9 +327,7 @@ function RegistrationPage() {
                     padding: '0.875rem',
                     fontSize: '1.1rem',
                     fontWeight: '600',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center'
+                    textAlign: 'center'
                   }}
                 >
                   {loading ? 'Creating Account...' : 'Create Account'}
