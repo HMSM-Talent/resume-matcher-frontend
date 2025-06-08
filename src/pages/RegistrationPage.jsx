@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { registerCandidate, registerCompany } from '../api/api';
-import './RegistrationPage.css';
+import '../styles/Dashboard.css';
 
 function RegistrationPage() {
   const navigate = useNavigate();
@@ -104,18 +104,16 @@ function RegistrationPage() {
       localStorage.setItem('refreshToken', refresh);
       localStorage.setItem('userData', JSON.stringify(user));
 
-      // 🔀 Dynamic redirection based on user role
+      // Dynamic redirection based on user role
       if (user.role === 'candidate') {
         navigate('/candidate/dashboard');
       } else if (user.role === 'company') {
         navigate('/company/dashboard');
       } else {
-        navigate('/dashboard'); // fallback for other roles or admin
+        navigate('/dashboard');
       }
   
     } catch (err) {
-      console.error('Full Registration Error:', err);
-  
       const errorData = err.response?.data;
       let errorMessage = 'Registration failed. Please try again.';
   
@@ -142,137 +140,214 @@ function RegistrationPage() {
   };
 
   return (
-    <div className="register-container">
-      <div className="register-card">
-        <h1>Create Account</h1>
-        <p className="subtitle">Join our platform today</p>
-
-        {error && <div className="error-message">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="register-form">
-          <div className="form-group">
-            <label htmlFor="userType">I am a:</label>
-            <select
-              id="userType"
-              name="userType"
-              value={userType}
-              onChange={handleUserTypeChange}
-              required
-            >
-              <option value="candidate">Job Seeker</option>
-              <option value="company">Company</option>
-            </select>
+    <div className="dashboard-container">
+      <div className="dashboard-content" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Main Content */}
+        <main className="dashboard-main" style={{ 
+          maxWidth: '600px', 
+          width: '100%',
+          margin: '2rem auto',
+          padding: '2.5rem',
+          backgroundColor: '#ffffff',
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div className="dashboard-header" style={{ marginBottom: '2rem', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Create Account</h1>
+            <p className="subtitle" style={{ fontSize: '1.1rem', color: '#666' }}>Join our platform today</p>
           </div>
 
-          {userType === 'candidate' && (
-            <>
-              <div className="form-group">
-                <label htmlFor="first_name">First Name</label>
+          <div className="filters-section" style={{ padding: '0 1rem' }}>
+            {error && <div className="error-message" role="alert" style={{ marginBottom: '1.5rem' }}>{error}</div>}
+
+            <form onSubmit={handleSubmit} className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="filter-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '1rem', marginBottom: '0.75rem', display: 'block' }}>I am a:</label>
+                <div className="flex gap-4" style={{ display: 'flex', gap: '1rem' }}>
+                  <label className="flex items-center gap-2 cursor-pointer" style={{ flex: 1 }}>
+                    <input
+                      type="radio"
+                      name="userType"
+                      value="candidate"
+                      checked={userType === 'candidate'}
+                      onChange={handleUserTypeChange}
+                      style={{ width: '1.25rem', height: '1.25rem' }}
+                    />
+                    <span style={{ fontSize: '1rem' }}>Candidate</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer" style={{ flex: 1 }}>
+                    <input
+                      type="radio"
+                      name="userType"
+                      value="company"
+                      checked={userType === 'company'}
+                      onChange={handleUserTypeChange}
+                      style={{ width: '1.25rem', height: '1.25rem' }}
+                    />
+                    <span style={{ fontSize: '1rem' }}>Company</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="filter-group" style={{ marginBottom: '0.5rem' }}>
+                <label htmlFor="email" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block' }}>Email</label>
                 <input
-                  type="text"
-                  id="first_name"
-                  name="first_name"
-                  value={formData.first_name}
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
                   onChange={handleChange}
                   required
-                  placeholder="Enter your first name"
+                  placeholder="Enter your email"
+                  style={{ 
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    fontSize: '1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0'
+                  }}
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="last_name">Last Name</label>
+              {userType === 'candidate' && (
+                <>
+                  <div className="filter-group" style={{ marginBottom: '0.5rem' }}>
+                    <label htmlFor="first_name" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block' }}>First Name</label>
+                    <input
+                      type="text"
+                      id="first_name"
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={handleChange}
+                      required
+                      placeholder="Enter your first name"
+                      style={{ 
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        fontSize: '1rem',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0'
+                      }}
+                    />
+                  </div>
+
+                  <div className="filter-group" style={{ marginBottom: '0.5rem' }}>
+                    <label htmlFor="last_name" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block' }}>Last Name</label>
+                    <input
+                      type="text"
+                      id="last_name"
+                      name="last_name"
+                      value={formData.last_name}
+                      onChange={handleChange}
+                      required
+                      placeholder="Enter your last name"
+                      style={{ 
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        fontSize: '1rem',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0'
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+
+              {userType === 'company' && (
+                <div className="filter-group" style={{ marginBottom: '0.5rem' }}>
+                  <label htmlFor="company_name" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block' }}>Company Name</label>
+                  <input
+                    type="text"
+                    id="company_name"
+                    name="company_name"
+                    value={formData.company_name}
+                    onChange={handleChange}
+                    required
+                    placeholder="Enter your company name"
+                    style={{ 
+                      width: '100%',
+                      padding: '0.75rem 1rem',
+                      fontSize: '1rem',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0'
+                    }}
+                  />
+                </div>
+              )}
+
+              <div className="filter-group" style={{ marginBottom: '0.5rem' }}>
+                <label htmlFor="password" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block' }}>Password</label>
                 <input
-                  type="text"
-                  id="last_name"
-                  name="last_name"
-                  value={formData.last_name}
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
                   onChange={handleChange}
                   required
-                  placeholder="Enter your last name"
+                  placeholder="Enter your password"
+                  style={{ 
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    fontSize: '1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0'
+                  }}
                 />
               </div>
-            </>
-          )}
 
-          {userType === 'company' && (
-            <div className="form-group">
-              <label htmlFor="company_name">Company Name</label>
-              <input
-                type="text"
-                id="company_name"
-                name="company_name"
-                value={formData.company_name}
-                onChange={handleChange}
-                required
-                placeholder="Enter your company name"
-              />
-            </div>
-          )}
+              <div className="filter-group" style={{ marginBottom: '0.5rem' }}>
+                <label htmlFor="confirmPassword" style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'block' }}>Confirm Password</label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  placeholder="Confirm your password"
+                  style={{ 
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    fontSize: '1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0'
+                  }}
+                />
+              </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              placeholder="Enter your email"
-            />
+              <div className="button-group" style={{ 
+                marginTop: '1rem',
+                display: 'flex',
+                justifyContent: 'center',
+                width: '100%'
+              }}>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  disabled={loading}
+                  style={{ 
+                    width: '50%',
+                    padding: '0.875rem',
+                    fontSize: '1.1rem',
+                    fontWeight: '600',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}
+                >
+                  {loading ? 'Creating Account...' : 'Create Account'}
+                </button>
+              </div>
+
+              <p className="text-center text-gray-600 mt-6" style={{ fontSize: '1rem' }}>
+                Already have an account?{' '}
+                <Link to="/" className="text-blue-600 hover:underline" style={{ fontWeight: '500', cursor: 'pointer' }}>
+                  Sign in here
+                </Link>
+              </p>
+            </form>
           </div>
-
-          <div className="form-group">
-            <label htmlFor="phone_number">Phone Number</label>
-            <input
-              type="tel"
-              id="phone_number"
-              name="phone_number"
-              value={formData.phone_number}
-              onChange={handleChange}
-              placeholder="Enter your phone number"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder="Create a password"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password2">Confirm Password</label>
-            <input
-              type="password"
-              id="password2"
-              name="password2"
-              value={formData.password2}
-              onChange={handleChange}
-              required
-              placeholder="Confirm your password"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="register-button"
-            disabled={loading}
-          >
-            {loading ? 'Creating Account...' : 'Create Account'}
-          </button>
-        </form>
-
-        <p className="login-link">
-          Already have an account?{' '}
-          <Link to="/">Sign in here</Link>
-        </p>
+        </main>
       </div>
     </div>
   );
