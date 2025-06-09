@@ -1,8 +1,11 @@
 import React from 'react';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import './CompanyHistoryPage.css';
 
 const CompanyHistoryPage = () => {
+  console.log("CompanyHistoryPage is rendering");
+
   // Sample data - replace with actual data from your backend
   const hiringHistory = [
     {
@@ -42,6 +45,7 @@ const CompanyHistoryPage = () => {
       <Navbar />
       <div className="company-history-container">
         <h1>Hiring History</h1>
+        <p>Testing if this page renders</p>
         
         <div className="history-filters">
           <div className="search-box">
@@ -122,6 +126,7 @@ const CompanyHistoryPage = () => {
           <button className="pagination-btn">Next</button>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };
