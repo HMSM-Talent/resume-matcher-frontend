@@ -8,6 +8,7 @@ import UploadResumePage from './pages/UploadResumePage';
 import UploadJDPage from './pages/UploadJDPage';
 import CandidateDashboardPage from './pages/CandidateDashboardPage';
 import CompanyDashboardPage from './pages/CompanyDashboardPage';
+import JobSearchPage from './pages/JobSearchPage';
 
 import './App.css';
 
@@ -27,42 +28,43 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-  <Route path="/" element={<LoginPage />} />
-  <Route path="/register" element={<RegisterPage />} />
-  <Route path="/candidate/dashboard" element={<CandidateDashboardPage />} />
-  <Route path="/company/dashboard" element={<CompanyDashboardPage />} />
-  <Route
-    path="/dashboard"
-    element={
-      <ProtectedRoute>
-        <DashboardPage />
-      </ProtectedRoute>
-    }
-  />
-  <Route
-    path="/history"
-    element={
-      <ProtectedRoute>
-        <HistoryPage />
-      </ProtectedRoute>
-    }
-  />
-  <Route
-    path="/upload-resume"
-    element={
-      <ProtectedRoute>
-        <UploadResumePage />
-      </ProtectedRoute>
-    }
-  />
-  <Route
-    path="/upload-jd"
-    element={
-      <ProtectedRoute>
-        <UploadJDPage />
-      </ProtectedRoute>
-    }
-  />
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/jobs" element={<JobSearchPage />} />
+          <Route path="/candidate/dashboard" element={<CandidateDashboardPage />} />
+          <Route path="/company/dashboard" element={<CompanyDashboardPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <ProtectedRoute>
+                <HistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/upload-resume"
+            element={
+              <ProtectedRoute>
+                <UploadResumePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/upload-jd"
+            element={
+              <ProtectedRoute>
+                <UploadJDPage />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

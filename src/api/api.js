@@ -106,4 +106,18 @@ export const getSimilarityScores = () => {
   });
 };
 
+// JOB APPLICATIONS
+export const applyForJob = (jobId) => {
+  return api.post(`/jobs/job/${jobId}/apply/`);
+};
+
+// JOB SEARCH
+export const searchJobs = (query = '', page = 1) => {
+  const params = {};
+  if (query) params.q = query;
+  if (page > 1) params.page = page;
+  
+  return api.get('/jobs/search/', { params });
+};
+
 export default api;
