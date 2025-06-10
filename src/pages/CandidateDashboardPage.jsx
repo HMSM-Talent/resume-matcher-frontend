@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, updateUserProfile, getSimilarityScores } from '../api/api';
+import { getCurrentUser, updateUserProfile, getSimilarityScores, getJobDescription } from '../api/api';
 import '../styles/Dashboard.css';
 
 function CandidateDashboard() {
@@ -22,6 +22,7 @@ function CandidateDashboard() {
     email: '',
     phone_number: '',
   });
+  const [jobDetails, setJobDetails] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,7 +39,23 @@ function CandidateDashboard() {
         try {
           const scoreRes = await getSimilarityScores();
           console.log('Similarity scores response:', scoreRes.data);
-          setSimilarJobs(Array.isArray(scoreRes.data.results) ? scoreRes.data.results : []);
+          const jobs = Array.isArray(scoreRes.data.results) ? scoreRes.data.results : [];
+          setSimilarJobs(jobs);
+
+          // Fetch job description details for each job
+          const jobDetailsPromises = jobs.map(async (job) => {
+            try {
+              const jobRes = await getJobDescription(job.job_description);
+              return { [job.job_description]: jobRes.data };
+            } catch (err) {
+              console.error(`Failed to fetch job description ${job.job_description}:`, err);
+              return { [job.job_description]: null };
+            }
+          });
+
+          const jobDetailsResults = await Promise.all(jobDetailsPromises);
+          const jobDetailsMap = jobDetailsResults.reduce((acc, curr) => ({ ...acc, ...curr }), {});
+          setJobDetails(jobDetailsMap);
         } catch (scoreErr) {
           console.error('Failed to fetch similarity scores:', scoreErr);
           console.error('Error details:', scoreErr.response?.data);
@@ -72,7 +89,10 @@ function CandidateDashboard() {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSortChange = (e) => {
@@ -81,27 +101,33 @@ function CandidateDashboard() {
 
   const filteredAndSortedJobs = similarJobs
     .filter(job => {
-      if (filters.jobType && job.job_description?.job_type !== filters.jobType) return false;
-      if (filters.experienceLevel && job.job_description?.experience_level !== filters.experienceLevel) return false;
+      const jobDetail = jobDetails[job.job_description];
+      if (!jobDetail) return false;
+      
+      // Convert job type to lowercase for case-insensitive comparison
+      const jobType = jobDetail.job_type?.toLowerCase();
+      const filterJobType = filters.jobType?.toLowerCase();
+      if (filterJobType && jobType !== filterJobType) return false;
+      
+      // Convert experience level to lowercase for case-insensitive comparison
+      const expLevel = jobDetail.experience_level?.toLowerCase();
+      const filterExpLevel = filters.experienceLevel?.toLowerCase();
+      if (filterExpLevel && expLevel !== filterExpLevel) return false;
+      
       if (filters.minScore > 0 && job.score < filters.minScore) return false;
       return true;
     })
     .sort((a, b) => {
       if (sortBy === 'score') return b.score - a.score;
-      if (sortBy === 'date') return new Date(b.created_at) - new Date(a.created_at);
+      if (sortBy === 'date') {
+        const dateA = new Date(jobDetails[a.job_description]?.created_at || 0);
+        const dateB = new Date(jobDetails[b.job_description]?.created_at || 0);
+        return dateB - dateA;
+      }
       return 0;
     });
 
-  if (loading) return (
-    <div className="dashboard-container">
-      <div className="dashboard-content">
-        <div className="dashboard-main">
-          <div className="loading-spinner">Loading...</div>
-        </div>
-      </div>
-    </div>
-  );
-
+  if (loading) return <div className="loading">Loading...</div>;
   if (error) return (
     <div className="dashboard-container">
       <div className="dashboard-content">
@@ -131,111 +157,86 @@ function CandidateDashboard() {
   return (
     <div className="dashboard-container">
       <div className="dashboard-content">
-        {/* Sidebar */}
-        <aside className="dashboard-sidebar">
-          <div className="sidebar-header">
-            <h2>{user.first_name ? `${user.first_name}'s Dashboard` : 'Candidate Dashboard'}</h2>
-            <p>Welcome back!</p>
-          </div>
-          
-          <div className="sidebar-menu">
-            <button className="active">
-              <span>📊 Overview</span>
-            </button>
-            <button onClick={() => navigate('/upload-resume')}>
-              <span>📝 Upload Resume</span>
-            </button>
-            <button onClick={() => setIsEditing(!isEditing)}>
-              <span>⚙️ Edit Profile</span>
-            </button>
-            <button onClick={() => {
-              localStorage.clear();
-              navigate('/');
-            }}>
-              <span>🚪 Sign Out</span>
-            </button>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="dashboard-main">
-          <div className="dashboard-header">
-            <h1>Job Matches Overview</h1>
-            {isEditing && (
-              <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>
-                Cancel Editing
+        <div className="dashboard-main">
+          {/* Profile Section */}
+          <div className="profile-section">
+            <div className="profile-header">
+              <h2>Profile</h2>
+              <button
+                onClick={() => setIsEditing(!isEditing)}
+                className="btn btn-secondary"
+              >
+                {isEditing ? 'Cancel' : 'Edit Profile'}
               </button>
-            )}
-          </div>
-
-          {/* Stats Grid */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <h3>Total Job Matches</h3>
-              <div className="value">{totalJobs}</div>
             </div>
-            <div className="stat-card">
-              <h3>Average Match Score</h3>
-              <div className="value">{averageScore}%</div>
-            </div>
-            <div className="stat-card">
-              <h3>Top Matches (80%+)</h3>
-              <div className="value">{topMatches}</div>
-            </div>
-          </div>
-
-          {/* Profile Edit Form */}
-          {isEditing && (
-            <div className="filters-section">
-              <h3 className="text-lg font-semibold mb-4">Edit Profile</h3>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="filter-group">
+            {isEditing ? (
+              <form onSubmit={handleSubmit} className="profile-form">
+                <div className="form-group">
                   <label htmlFor="first_name">First Name</label>
                   <input
+                    type="text"
                     id="first_name"
                     name="first_name"
                     value={formData.first_name}
                     onChange={handleChange}
-                    placeholder="Enter first name"
+                    required
                   />
                 </div>
-                <div className="filter-group">
+                <div className="form-group">
                   <label htmlFor="last_name">Last Name</label>
                   <input
+                    type="text"
                     id="last_name"
                     name="last_name"
                     value={formData.last_name}
                     onChange={handleChange}
-                    placeholder="Enter last name"
+                    required
                   />
                 </div>
-                <div className="filter-group">
+                <div className="form-group">
                   <label htmlFor="email">Email</label>
                   <input
+                    type="email"
                     id="email"
                     name="email"
-                    type="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="Enter email"
+                    required
                   />
                 </div>
-                <div className="filter-group">
+                <div className="form-group">
                   <label htmlFor="phone_number">Phone Number</label>
                   <input
+                    type="tel"
                     id="phone_number"
                     name="phone_number"
                     value={formData.phone_number}
                     onChange={handleChange}
-                    placeholder="Enter phone number"
                   />
                 </div>
-                <button type="submit" className="btn btn-primary">
-                  Save Changes
-                </button>
+                <div className="form-actions">
+                  <button type="submit" className="btn btn-primary">
+                    Save Changes
+                  </button>
+                </div>
               </form>
-            </div>
-          )}
+            ) : (
+              <div className="profile-info">
+                <div className="info-group">
+                  <label>Name</label>
+                  <p>{`${user.first_name} ${user.last_name}`}</p>
+                </div>
+                <div className="info-group">
+                  <label>Email</label>
+                  <p>{user.email}</p>
+                </div>
+                <div className="info-group">
+                  <label>Phone</label>
+                  <p>{user.phone_number || 'Not provided'}</p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Filters Section */}
           <div className="filters-section">
@@ -250,10 +251,10 @@ function CandidateDashboard() {
                   onChange={handleFilterChange}
                 >
                   <option value="">All Job Types</option>
-                  <option value="full-time">Full Time</option>
-                  <option value="part-time">Part Time</option>
-                  <option value="contract">Contract</option>
-                  <option value="internship">Internship</option>
+                  <option value="FULL_TIME">Full Time</option>
+                  <option value="PART_TIME">Part Time</option>
+                  <option value="CONTRACT">Contract</option>
+                  <option value="INTERNSHIP">Internship</option>
                 </select>
               </div>
 
@@ -266,10 +267,10 @@ function CandidateDashboard() {
                   onChange={handleFilterChange}
                 >
                   <option value="">All Experience Levels</option>
-                  <option value="entry">Entry Level</option>
-                  <option value="mid">Mid Level</option>
-                  <option value="senior">Senior Level</option>
-                  <option value="lead">Lead Level</option>
+                  <option value="ENTRY">Entry Level</option>
+                  <option value="MID">Mid Level</option>
+                  <option value="SENIOR">Senior Level</option>
+                  <option value="LEAD">Lead Level</option>
                 </select>
               </div>
 
@@ -313,48 +314,53 @@ function CandidateDashboard() {
                 <p className="text-gray-600">No matches found yet. Please upload your resume.</p>
               </div>
             ) : (
-              filteredAndSortedJobs.map((item) => (
-                <div key={item.id} className="result-card">
-                  <div className="result-header">
-                    <div>
-                      <h3 className="result-title">{item.job_description?.title || 'Untitled Position'}</h3>
-                      <div className="result-meta">
-                        <span>{item.job_description?.company_name}</span>
-                        <span>•</span>
-                        <span>{item.job_description?.location}</span>
-                        <span>•</span>
-                        <span>Type: {item.job_description?.job_type || 'Not specified'}</span>
-                        <span>•</span>
-                        <span>Experience: {item.job_description?.experience_level || 'Not specified'}</span>
+              filteredAndSortedJobs.map((item) => {
+                const jobDetail = jobDetails[item.job_description];
+                if (!jobDetail) return null;
+                
+                return (
+                  <div key={item.id} className="result-card">
+                    <div className="result-header">
+                      <div>
+                        <h3 className="result-title">{jobDetail.title}</h3>
+                        <div className="result-meta">
+                          <span>{jobDetail.company_name}</span>
+                          <span>•</span>
+                          <span>{jobDetail.location}</span>
+                          <span>•</span>
+                          <span>Type: {jobDetail.job_type.replace('_', ' ').toUpperCase()}</span>
+                          <span>•</span>
+                          <span>Experience: {jobDetail.experience_level.replace('_', ' ').toUpperCase()}</span>
+                        </div>
+                      </div>
+                      <div className="result-score">
+                        {(item.score * 100).toFixed(1)}% Match
                       </div>
                     </div>
-                    <div className="result-score">
-                      {(item.score * 100).toFixed(1)}% Match
+                    <div className="result-details">
+                      <p className="text-sm text-gray-500 mb-2">
+                        Posted: {new Date(jobDetail.created_at).toLocaleDateString()}
+                      </p>
+                      {jobDetail.file_url && (
+                        <button
+                          onClick={() => {
+                            const fileUrl = jobDetail.file_url.startsWith('http')
+                              ? jobDetail.file_url
+                              : `${process.env.REACT_APP_API_URL || ''}${jobDetail.file_url}`;
+                            window.open(fileUrl, '_blank');
+                          }}
+                          className="btn btn-secondary"
+                        >
+                          View Job Description
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="result-details">
-                    <p className="text-sm text-gray-500 mb-2">
-                      Posted: {new Date(item.created_at).toLocaleDateString()}
-                    </p>
-                    {item.job_description?.file && (
-                      <button
-                        onClick={() => {
-                          const fileUrl = item.job_description.file.startsWith('http')
-                            ? item.job_description.file
-                            : `${process.env.REACT_APP_API_URL || ''}${item.job_description.file}`;
-                          window.open(fileUrl, '_blank');
-                        }}
-                        className="btn btn-secondary"
-                      >
-                        View Job Description
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );

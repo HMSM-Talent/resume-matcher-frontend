@@ -106,4 +106,8 @@ export const getSimilarityScores = () => {
   });
 };
 
+export const getJobDescription = (id) => {
+  return api.get(`/job-descriptions/${id}/`);
+};
+
 export default api;

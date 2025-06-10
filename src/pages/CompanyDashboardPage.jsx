@@ -81,13 +81,20 @@ function CompanyDashboard() {
 
   const filteredAndSortedCandidates = similarCandidates
     .filter(candidate => {
-      if (filters.experienceLevel && candidate.resume?.experience_level !== filters.experienceLevel) return false;
+      const expLevel = candidate.resume?.experience_level?.toLowerCase();
+      const filterExpLevel = filters.experienceLevel?.toLowerCase();
+      if (filterExpLevel && expLevel !== filterExpLevel) return false;
+      
       if (filters.minScore > 0 && candidate.score < filters.minScore) return false;
       return true;
     })
     .sort((a, b) => {
       if (sortBy === 'score') return b.score - a.score;
-      if (sortBy === 'date') return new Date(b.created_at) - new Date(a.created_at);
+      if (sortBy === 'date') {
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
+        return dateB - dateA;
+      }
       return 0;
     });
 
@@ -239,10 +246,10 @@ function CompanyDashboard() {
                   onChange={handleFilterChange}
                 >
                   <option value="">All Experience Levels</option>
-                  <option value="entry">Entry Level</option>
-                  <option value="mid">Mid Level</option>
-                  <option value="senior">Senior Level</option>
-                  <option value="lead">Lead Level</option>
+                  <option value="ENTRY">Entry Level</option>
+                  <option value="MID">Mid Level</option>
+                  <option value="SENIOR">Senior Level</option>
+                  <option value="LEAD">Lead Level</option>
                 </select>
               </div>
 
@@ -299,7 +306,7 @@ function CompanyDashboard() {
                         <div className="result-meta">
                           <span>{item.resume?.user?.email || 'Email not available'}</span>
                           <span>•</span>
-                          <span>Experience: {item.resume?.experience_level || 'Not specified'}</span>
+                          <span>Experience: {item.resume?.experience_level?.replace('_', ' ').toUpperCase() || 'Not specified'}</span>
                           <span>•</span>
                           <span>Skills: {item.resume?.skills || 'Not specified'}</span>
                         </div>
