@@ -87,7 +87,7 @@ export const updateUserProfile = (userData) => {
 
 // FILE UPLOADS
 export const uploadResume = (formData) => {
-  return api.post('/resumes/upload/', formData, {
+  return api.post('/upload/resume/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -95,7 +95,7 @@ export const uploadResume = (formData) => {
 };
 
 export const uploadJobDescription = (formData) => {
-  return api.post('/job-descriptions/upload/', formData, {
+  return api.post('/upload/job-description/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
       'Accept': 'application/json'

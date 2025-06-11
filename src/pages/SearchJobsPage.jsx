@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { searchJobDescriptions, applyForJob } from '../api/api';
+import { searchJobDescriptions, applyForJob, getSimilarityScores } from '../api/api';
 import '../styles/SearchJobs.css';
 
 function SearchJobsPage() {
@@ -27,110 +27,15 @@ function SearchJobsPage() {
     currentPage: 1,
   });
 
-  // Debounced search function
-  const debouncedSearch = useCallback(async (searchParams) => {
-    try {
-      setLoading(true);
-      setError('');
-
-      const response = await searchJobDescriptions(searchParams);
-      setJobs(response.data.results || []);
-      setPagination(prev => ({
-        ...prev,
-        count: response.data.count,
-        next: response.data.next,
-        previous: response.data.previous,
-      }));
-    } catch (err) {
-      console.error('Search error:', err);
-      console.error('Error details:', {
-        status: err.response?.status,
-        data: err.response?.data,
-        headers: err.response?.headers,
-      });
-      
-      let errorMessage = 'Failed to load jobs. ';
-      if (err.response?.status === 401) {
-        errorMessage += 'Please log in to view jobs.';
-        navigate('/login');
-      } else if (err.response?.data?.detail) {
-        errorMessage += err.response.data.detail;
-      } else if (err.response?.status === 500) {
-        errorMessage += 'Server error. Please try again later.';
-      } else if (err.response?.status === 403) {
-        errorMessage += 'You do not have permission to view jobs.';
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate]);
-
-  // Effect for initial load and pagination
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
-    const searchParams = {
-      search: filters.search || undefined,
-      job_type: filters.jobType || undefined,
-      experience_level: filters.experienceLevel || undefined,
-      min_score: filters.minScore || undefined,
-      location: filters.location || undefined,
-      sort_by: sortBy || undefined,
-      limit: 10,
-      offset: (pagination.currentPage - 1) * 10,
-    };
-
-    // Remove undefined parameters
-    Object.keys(searchParams).forEach(key => 
-      searchParams[key] === undefined && delete searchParams[key]
-    );
-
-    debouncedSearch(searchParams);
-  }, [user, pagination.currentPage, sortBy, debouncedSearch, navigate]);
-
-  // Effect for filter changes with debounce
-  useEffect(() => {
-    if (!user) return;
-
-    const timeoutId = setTimeout(() => {
-      const searchParams = {
-        search: filters.search || undefined,
-        job_type: filters.jobType || undefined,
-        experience_level: filters.experienceLevel || undefined,
-        min_score: filters.minScore || undefined,
-        location: filters.location || undefined,
-        sort_by: sortBy || undefined,
-        limit: 10,
-        offset: 0, // Reset to first page on filter change
-      };
-
-      // Remove undefined parameters
-      Object.keys(searchParams).forEach(key => 
-        searchParams[key] === undefined && delete searchParams[key]
-      );
-
-      debouncedSearch(searchParams);
-      setPagination(prev => ({ ...prev, currentPage: 1 }));
-    }, 500); // 500ms debounce
-
-    return () => clearTimeout(timeoutId);
-  }, [filters, sortBy, user, debouncedSearch]);
-
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFilters(prev => ({ ...prev, [name]: value }));
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
   const handleSortChange = (e) => {
     setSortBy(e.target.value);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
   const handlePageChange = (newPage) => {
@@ -142,27 +47,10 @@ function SearchJobsPage() {
       setApplyingJobs(prev => new Set([...prev, jobId]));
       setApplyError('');
       await applyForJob(jobId);
-      
-      // Update the job in the list to show application status
-      setJobs(prevJobs => 
-        prevJobs.map(job => 
-          job.id === jobId 
-            ? { ...job, application_status: 'PENDING', applied_at: new Date().toISOString() }
-            : job
-        )
-      );
+      // Refresh the jobs list to update application status
+      fetchJobs();
     } catch (err) {
-      console.error('Apply error:', err);
-      let errorMessage = 'Failed to apply for the job. ';
-      if (err.response?.status === 401) {
-        errorMessage += 'Please log in to apply.';
-        navigate('/login');
-      } else if (err.response?.data?.detail) {
-        errorMessage += err.response.data.detail;
-      } else if (err.response?.status === 403) {
-        errorMessage += 'You do not have permission to apply for this job.';
-      }
-      setApplyError(errorMessage);
+      setApplyError(err.response?.data?.detail || 'Failed to apply for the job. Please try again.');
     } finally {
       setApplyingJobs(prev => {
         const newSet = new Set(prev);
@@ -172,22 +60,84 @@ function SearchJobsPage() {
     }
   };
 
-  const totalPages = Math.ceil(pagination.count / 10);
+  const fetchJobs = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Fetch job listings with sorting parameters
+      const searchParams = {
+        ...filters,
+        page: pagination.currentPage,
+        ordering: sortBy === 'score' ? '-score_value' : '-created_at', // Using score_value for sorting
+        min_score: filters.minScore
+      };
+      const response = await searchJobDescriptions(searchParams);
+      const jobsData = response.data.results || [];
+
+      // Fetch similarity scores
+      try {
+        const scoreRes = await getSimilarityScores();
+        const scores = Array.isArray(scoreRes.data.results) ? scoreRes.data.results : [];
+        
+        // Create a map of job IDs to scores
+        const scoreMap = {};
+        scores.forEach(score => {
+          scoreMap[score.job_description] = score.score;
+        });
+
+        // Combine job data with scores
+        const jobsWithScores = jobsData.map(job => ({
+          ...job,
+          score: scoreMap[job.id] !== undefined ? scoreMap[job.id] : null
+        }));
+
+        setJobs(jobsWithScores);
+      } catch (scoreErr) {
+        console.error('Error fetching scores:', scoreErr);
+        // If scores can't be fetched, still show jobs without scores
+        setJobs(jobsData);
+      }
+
+      setPagination(prev => ({
+        ...prev,
+        count: response.data.count,
+        next: response.data.next,
+        previous: response.data.previous
+      }));
+    } catch (err) {
+      setError('Failed to load jobs. Please try again.');
+      if (err.response?.status === 401) navigate('/login');
+    } finally {
+      setLoading(false);
+    }
+  }, [filters, pagination.currentPage, sortBy, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchJobs();
+    }
+  }, [user, fetchJobs]);
 
   if (!user) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   if (loading) return <div className="loading">Loading...</div>;
   if (error) return <div className="error-message">{error}</div>;
 
+  const totalPages = Math.ceil(pagination.count / 10);
+
   return (
     <div className="dashboard-container">
       <div className="dashboard-content">
         <div className="dashboard-main">
+          <div className="search-header">
+            <h1>Search Jobs</h1>
+          </div>
+
           {/* Filters Section */}
           <div className="filters-section">
-            <h3 className="text-lg font-semibold mb-4">Search Jobs</h3>
             <div className="filters-grid">
               <div className="filter-group">
                 <label htmlFor="search">Search</label>
@@ -197,7 +147,7 @@ function SearchJobsPage() {
                   name="search"
                   value={filters.search}
                   onChange={handleFilterChange}
-                  placeholder="Search by title, company, skills, location..."
+                  placeholder="Search jobs..."
                   className="w-full"
                 />
               </div>
@@ -309,11 +259,15 @@ function SearchJobsPage() {
                           <span>Experience: {job.experience_level.replace('_', ' ').toUpperCase()}</span>
                         </div>
                       </div>
-                      {job.similarity_score !== undefined && (
-                        <div className="result-score">
-                          {(job.similarity_score * 100).toFixed(1)}% Match
-                        </div>
-                      )}
+                      <div className="result-score">
+                        {job.score !== null ? (
+                          `${(job.score * 100).toFixed(1)}% Match`
+                        ) : (
+                          <span className="text-gray-500 text-sm">
+                            Score not available
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="result-details">
                       <p className="text-sm text-gray-500 mb-2">
@@ -333,56 +287,45 @@ function SearchJobsPage() {
                             View Job Description
                           </button>
                         )}
-                        {job.application_status ? (
-                          <div className="application-status">
-                            <span className={`status-badge status-${job.application_status.toLowerCase()}`}>
-                              {job.application_status}
-                            </span>
-                            <span className="text-sm text-gray-500 ml-2">
-                              Applied on {new Date(job.applied_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleApply(job.id)}
-                            disabled={applyingJobs.has(job.id) || !job.is_active}
-                            className="btn btn-primary"
-                          >
-                            {applyingJobs.has(job.id) ? 'Applying...' : 'Apply'}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleApply(job.id)}
+                          disabled={applyingJobs.has(job.id) || !job.is_active}
+                          className="btn btn-primary"
+                        >
+                          {applyingJobs.has(job.id) ? 'Applying...' : 'Apply'}
+                        </button>
                       </div>
                       {applyError && <p className="text-red-500 text-sm mt-2">{applyError}</p>}
-                      {!job.is_active && !job.application_status && (
+                      {!job.is_active && (
                         <p className="text-yellow-500 text-sm mt-2">This job posting is no longer active</p>
                       )}
                     </div>
                   </div>
                 ))}
-
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className="pagination-controls mt-4 flex justify-center gap-2">
-                    <button
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={!pagination.previous}
-                      className="btn btn-secondary"
-                    >
-                      Previous
-                    </button>
-                    <span className="flex items-center">
-                      Page {pagination.currentPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={!pagination.next}
-                      className="btn btn-secondary"
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
               </>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={!pagination.previous}
+                  className="btn btn-secondary"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600">
+                  Page {pagination.currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={!pagination.next}
+                  className="btn btn-secondary"
+                >
+                  Next
+                </button>
+              </div>
             )}
           </div>
         </div>
