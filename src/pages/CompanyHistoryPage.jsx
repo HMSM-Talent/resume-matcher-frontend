@@ -41,11 +41,12 @@ const CompanyHistoryPage = () => {
   ];
 
   return (
-    <div className="company-history-page">
+    <div className="page-container">
       <Navbar />
       <div className="company-history-container">
-        <h1>Hiring History</h1>
-        <p>Testing if this page renders</p>
+        <div className="history-header">
+          <h1>Hiring History</h1>
+        </div>
         
         <div className="history-filters">
           <div className="search-box">
@@ -110,9 +111,13 @@ const CompanyHistoryPage = () => {
                   </td>
                   <td>{application.matchScore}</td>
                   <td>
-                    <button className="action-btn view">View Profile</button>
-                    <button className="action-btn schedule">Schedule Interview</button>
-                    <button className="action-btn reject">Reject</button>
+                    <div className="action-buttons">
+                      <button className="action-btn view">View Profile</button>
+                      <button className="action-btn schedule">Schedule Interview</button>
+                      <button className="action-btn edit">Edit</button>
+                      <button className="action-btn delete">Delete</button>
+                      <button className="action-btn reject">Reject</button>
+                    </div>
                   </td>
                 </tr>
               ))}

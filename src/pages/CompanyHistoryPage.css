@@ -1,18 +1,26 @@
-.company-history-page {
+.page-container {
   min-height: 100vh;
-  background-color: #f5f5f5;
-  padding-top: 80px; /* Space for fixed navbar */
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f9fa;
 }
 
 .company-history-container {
+  flex: 1;
   max-width: 1200px;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  margin: 0 auto;
+  padding: 2rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.company-history-container h1 {
-  color: #333;
+.history-header {
   margin-bottom: 2rem;
+}
+
+.history-header h1 {
+  color: #333;
+  margin: 0;
   font-size: 2rem;
 }
 
@@ -23,14 +31,24 @@
   margin-bottom: 2rem;
   gap: 1rem;
   flex-wrap: wrap;
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .search-box input {
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
   border: 1px solid #ddd;
   border-radius: 4px;
   width: 300px;
   font-size: 0.9rem;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .filter-options {
@@ -39,11 +57,18 @@
 }
 
 .filter-options select {
-  padding: 0.5rem;
+  padding: 0.75rem;
   border: 1px solid #ddd;
   border-radius: 4px;
   background-color: white;
   font-size: 0.9rem;
+  min-width: 150px;
+}
+
+.filter-options select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .history-table-container {
@@ -51,6 +76,7 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow-x: auto;
+  margin-bottom: 2rem;
 }
 
 .history-table {
@@ -70,6 +96,7 @@
   background-color: #f8f9fa;
   font-weight: 600;
   color: #333;
+  white-space: nowrap;
 }
 
 .history-table tr:hover {
@@ -96,6 +123,7 @@
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 500;
+  display: inline-block;
 }
 
 .status-badge.under-review {
@@ -113,61 +141,78 @@
   color: #155724;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .action-btn {
-  padding: 0.4rem 0.8rem;
-  border: none;
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 0.85rem;
   cursor: pointer;
-  margin-right: 0.5rem;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  white-space: nowrap;
+  background-color: transparent;
+  outline: none;
+  color: #666;
 }
 
-.action-btn.view {
-  background-color: #007bff;
-  color: white;
+.action-btn:focus {
+  outline: none;
+  box-shadow: none;
 }
 
-.action-btn.schedule {
-  background-color: #28a745;
-  color: white;
-}
-
+.action-btn.view,
+.action-btn.schedule,
+.action-btn.edit,
+.action-btn.delete,
 .action-btn.reject {
-  background-color: #dc3545;
-  color: white;
+  color: #666;
+  border-color: #ddd;
 }
 
 .action-btn:hover {
-  opacity: 0.9;
+  background-color: #f8f9fa;
+  border-color: #999;
 }
 
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 2rem;
   gap: 1rem;
+  margin-top: 2rem;
 }
 
 .pagination-btn {
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1.5rem;
   border: 1px solid #ddd;
   background-color: white;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  font-weight: 500;
 }
 
 .pagination-btn:hover {
   background-color: #f8f9fa;
+  border-color: #007bff;
+  color: #007bff;
 }
 
 .page-number {
   color: #666;
+  font-size: 0.9rem;
 }
 
 @media (max-width: 768px) {
+  .company-history-container {
+    padding: 1rem;
+  }
+
   .history-filters {
     flex-direction: column;
     align-items: stretch;
@@ -185,7 +230,20 @@
     width: 100%;
   }
 
-  .skills-tags {
-    max-width: 200px;
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .pagination-btn {
+    width: 100%;
   }
 } 
