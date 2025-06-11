@@ -139,14 +139,14 @@ function CandidateDashboard() {
           </div>
           
           <div className="sidebar-menu">
-            <button onClick={() => navigate(user.role === 'candidate' ? '/candidate/dashboard' : '/company/dashboard')}>
+            <button className="active">
               <span>📊 Overview</span>
-            </button>
-            <button onClick={() => navigate('/upload-resume')}>
-              <span>📝 Upload Resume</span>
             </button>
             <button onClick={() => navigate('/jobs')}>
               <span>🔍 Job Search</span>
+            </button>
+            <button onClick={() => navigate('/upload-resume')}>
+              <span>📝 Upload Resume</span>
             </button>
             <button onClick={() => setIsEditing(!isEditing)}>
               <span>⚙️ Edit Profile</span>
