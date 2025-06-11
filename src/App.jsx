@@ -9,6 +9,7 @@ import UploadJDPage from './pages/UploadJDPage';
 import CandidateDashboardPage from './pages/CandidateDashboardPage';
 import CompanyDashboardPage from './pages/CompanyDashboardPage';
 import JobSearchPage from './pages/JobSearchPage';
+import CompanyJobDetailPage from './pages/CompanyJobDetailPage';
 
 import './App.css';
 
@@ -33,6 +34,7 @@ function App() {
           <Route path="/jobs" element={<JobSearchPage />} />
           <Route path="/candidate/dashboard" element={<CandidateDashboardPage />} />
           <Route path="/company/dashboard" element={<CompanyDashboardPage />} />
+          <Route path="/company/jobs/:jobId" element={<CompanyJobDetailPage />} />
           <Route
             path="/dashboard"
             element={

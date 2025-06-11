@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, updateUserProfile, getSimilarityScores } from '../api/api';
+import { getCurrentUser, updateUserProfile, getSimilarityScores, applyForJob } from '../api/api';
 import '../styles/Dashboard.css';
 
 function CandidateDashboard() {
@@ -22,6 +22,8 @@ function CandidateDashboard() {
     email: '',
     phone_number: '',
   });
+  const [applyingJobs, setApplyingJobs] = useState(new Set());
+  const [applicationStatus, setApplicationStatus] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,8 +81,39 @@ function CandidateDashboard() {
     setSortBy(e.target.value);
   };
 
+  const handleApply = async (jobId) => {
+    if (applyingJobs.has(jobId)) return;
+
+    setApplyingJobs(prev => new Set([...prev, jobId]));
+    setApplicationStatus(prev => ({ ...prev, [jobId]: { status: 'applying', message: '' } }));
+
+    try {
+      await applyForJob(jobId);
+      setApplicationStatus(prev => ({
+        ...prev,
+        [jobId]: { status: 'success', message: 'Application submitted successfully!' }
+      }));
+    } catch (err) {
+      setApplicationStatus(prev => ({
+        ...prev,
+        [jobId]: {
+          status: 'error',
+          message: err.response?.data?.detail || 'Failed to submit application. Please try again.'
+        }
+      }));
+    } finally {
+      setApplyingJobs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(jobId);
+        return newSet;
+      });
+    }
+  };
+
   const filteredAndSortedJobs = similarJobs
     .filter(job => {
+      if (!job.job_description) return false;
+
       if (filters.jobType && job.job_description?.job_type !== filters.jobType) return false;
       if (filters.experienceLevel && job.job_description?.experience_level !== filters.experienceLevel) return false;
       if (filters.minScore > 0 && job.score < filters.minScore) return false;
@@ -88,7 +121,9 @@ function CandidateDashboard() {
     })
     .sort((a, b) => {
       if (sortBy === 'score') return b.score - a.score;
-      if (sortBy === 'date') return new Date(b.created_at) - new Date(a.created_at);
+      const dateA = new Date(a.created_at || 0);
+      const dateB = new Date(b.created_at || 0);
+      if (sortBy === 'date') return dateB.getTime() - dateA.getTime();
       return 0;
     });
 
@@ -318,13 +353,15 @@ function CandidateDashboard() {
             ) : (
               filteredAndSortedJobs.map((item) => (
                 <div key={item.id} className="result-card">
+                  {console.log("DEBUG: Current item in map:", item)}
+                  {console.log("DEBUG: item.job_description in map:", item.job_description)}
                   <div className="result-header">
                     <div>
                       <h3 className="result-title">{item.job_description?.title || 'Untitled Position'}</h3>
                       <div className="result-meta">
-                        <span>{item.job_description?.company_name}</span>
+                        <span>{item.job_description?.company_name || 'N/A Company'}</span>
                         <span>•</span>
-                        <span>{item.job_description?.location}</span>
+                        <span>{item.job_description?.location || 'N/A Location'}</span>
                         <span>•</span>
                         <span>Type: {item.job_description?.job_type || 'Not specified'}</span>
                         <span>•</span>
@@ -339,7 +376,7 @@ function CandidateDashboard() {
                     <p className="text-sm text-gray-500 mb-2">
                       Posted: {new Date(item.created_at).toLocaleDateString()}
                     </p>
-                    {item.job_description?.file && (
+                    <div className="job-actions">
                       <button
                         onClick={() => {
                           const fileUrl = item.job_description.file.startsWith('http')
@@ -351,6 +388,34 @@ function CandidateDashboard() {
                       >
                         View Job Description
                       </button>
+
+                      <button
+                        onClick={() => handleApply(item.job_description.id)}
+                        disabled={applyingJobs.has(item.job_description.id) || applicationStatus[item.job_description.id]?.status === 'success'}
+                        className={`btn ${
+                          applicationStatus[item.job_description.id]?.status === 'success'
+                            ? 'btn-success'
+                            : 'btn-primary'
+                        }`}
+                      >
+                        {applyingJobs.has(item.job_description.id)
+                          ? 'Applying...'
+                          : applicationStatus[item.job_description.id]?.status === 'success'
+                            ? 'Applied ✓'
+                            : 'Apply Now'}
+                      </button>
+                    </div>
+
+                    {applicationStatus[item.job_description.id]?.message && (
+                      <p className={`application-status ${
+                        applicationStatus[item.job_description.id].status === 'success'
+                          ? 'status-success'
+                          : applicationStatus[item.job_description.id].status === 'error'
+                            ? 'status-error'
+                            : 'status-info'
+                      }`}>
+                        {applicationStatus[item.job_description.id].message}
+                      </p>
                     )}
                   </div>
                 </div>

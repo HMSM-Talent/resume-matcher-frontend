@@ -108,7 +108,7 @@ export const getSimilarityScores = () => {
 
 // JOB APPLICATIONS
 export const applyForJob = (jobId) => {
-  return api.post(`/jobs/job/${jobId}/apply/`);
+  return api.post('/apply/', { job_description: jobId });
 };
 
 // JOB SEARCH
@@ -118,6 +118,24 @@ export const searchJobs = (query = '', page = 1) => {
   if (page > 1) params.page = page;
   
   return api.get('/jobs/search/', { params });
+};
+
+// JOB DESCRIPTIONS
+export const getJobDescriptionById = (jobId) => {
+  return api.get(`/job-descriptions/${jobId}/`);
+};
+
+export const getCompanyJobListings = (filters = {}) => {
+  const params = new URLSearchParams();
+  
+  // Add filter parameters
+  if (filters.job_type) params.append('job_type', filters.job_type);
+  if (filters.experience_level) params.append('experience_level', filters.experience_level);
+  if (filters.location) params.append('location', filters.location);
+  if (filters.is_active !== null) params.append('is_active', filters.is_active.toString());
+  if (filters.ordering) params.append('ordering', filters.ordering);
+  
+  return api.get('/job-descriptions/', { params });
 };
 
 export default api;

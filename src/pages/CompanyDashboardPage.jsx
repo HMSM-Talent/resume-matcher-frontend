@@ -1,20 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, updateUserProfile, getSimilarityScores } from '../api/api';
+import { getCurrentUser, updateUserProfile } from '../api/api';
+import CompanyJobListings from '../components/CompanyJobListings';
 import '../styles/Dashboard.css';
 
 function CompanyDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [similarCandidates, setSimilarCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [filters, setFilters] = useState({
-    experienceLevel: '',
-    minScore: 0,
-  });
-  const [sortBy, setSortBy] = useState('score');
   const [formData, setFormData] = useState({
     company_name: '',
     email: '',
@@ -31,19 +26,6 @@ function CompanyDashboard() {
           email: userRes.data.email || '',
           phone_number: userRes.data.phone_number || ''
         });
-
-        try {
-          const scoreRes = await getSimilarityScores();
-          console.log('Similarity scores response:', scoreRes.data);
-          if (scoreRes.data.results && scoreRes.data.results.length > 0) {
-            console.log('First candidate data structure:', scoreRes.data.results[0]);
-          }
-          setSimilarCandidates(Array.isArray(scoreRes.data.results) ? scoreRes.data.results : []);
-        } catch (scoreErr) {
-          console.error('Failed to fetch similarity scores:', scoreErr);
-          console.error('Error details:', scoreErr.response?.data);
-          setSimilarCandidates([]);
-        }
       } catch (err) {
         setError('Failed to load user data.');
         if (err.response?.status === 401) navigate('/login');
@@ -59,15 +41,6 @@ function CompanyDashboard() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSortChange = (e) => {
-    setSortBy(e.target.value);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -78,18 +51,6 @@ function CompanyDashboard() {
       setError('Update failed');
     }
   };
-
-  const filteredAndSortedCandidates = similarCandidates
-    .filter(candidate => {
-      if (filters.experienceLevel && candidate.resume?.experience_level !== filters.experienceLevel) return false;
-      if (filters.minScore > 0 && candidate.score < filters.minScore) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'score') return b.score - a.score;
-      if (sortBy === 'date') return new Date(b.created_at) - new Date(a.created_at);
-      return 0;
-    });
 
   if (loading) return (
     <div className="dashboard-container">
@@ -120,12 +81,6 @@ function CompanyDashboard() {
       </div>
     </div>
   );
-
-  const totalCandidates = similarCandidates.length;
-  const averageScore = similarCandidates.length > 0
-    ? (similarCandidates.reduce((acc, curr) => acc + curr.score, 0) / similarCandidates.length * 100).toFixed(1)
-    : 0;
-  const topMatches = similarCandidates.filter(c => c.score >= 0.8).length;
 
   return (
     <div className="dashboard-container">
@@ -165,22 +120,6 @@ function CompanyDashboard() {
                 Cancel Editing
               </button>
             )}
-          </div>
-
-          {/* Stats Grid */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <h3>Total Candidates</h3>
-              <div className="value">{totalCandidates}</div>
-            </div>
-            <div className="stat-card">
-              <h3>Average Match Score</h3>
-              <div className="value">{averageScore}%</div>
-            </div>
-            <div className="stat-card">
-              <h3>Top Matches (80%+)</h3>
-              <div className="value">{topMatches}</div>
-            </div>
           </div>
 
           {/* Profile Edit Form */}
@@ -226,111 +165,8 @@ function CompanyDashboard() {
             </div>
           )}
 
-          {/* Filters Section */}
-          <div className="filters-section">
-            <h3 className="text-lg font-semibold mb-4">Filter Candidates</h3>
-            <div className="filters-grid">
-              <div className="filter-group">
-                <label htmlFor="experienceLevel">Experience Level</label>
-                <select
-                  id="experienceLevel"
-                  name="experienceLevel"
-                  value={filters.experienceLevel}
-                  onChange={handleFilterChange}
-                >
-                  <option value="">All Experience Levels</option>
-                  <option value="entry">Entry Level</option>
-                  <option value="mid">Mid Level</option>
-                  <option value="senior">Senior Level</option>
-                  <option value="lead">Lead Level</option>
-                </select>
-              </div>
-
-              <div className="filter-group">
-                <label htmlFor="minScore">Minimum Match Score</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="range"
-                    id="minScore"
-                    name="minScore"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={filters.minScore}
-                    onChange={handleFilterChange}
-                    className="w-full"
-                  />
-                  <span className="text-sm text-gray-600">{(filters.minScore * 100).toFixed(0)}%</span>
-                </div>
-              </div>
-
-              <div className="filter-group">
-                <label htmlFor="sortBy">Sort By</label>
-                <select
-                  id="sortBy"
-                  value={sortBy}
-                  onChange={handleSortChange}
-                >
-                  <option value="score">Match Score</option>
-                  <option value="date">Date</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Results List */}
-          <div className="results-list">
-            <h2 className="text-xl font-semibold mb-4">Top Matching Candidates</h2>
-            {!filteredAndSortedCandidates || filteredAndSortedCandidates.length === 0 ? (
-              <div className="result-card">
-                <p className="text-gray-600">No matches found yet. Please upload a job description.</p>
-              </div>
-            ) : (
-              filteredAndSortedCandidates.map((item) => {
-                const candidateName = item.resume?.user?.first_name && item.resume?.user?.last_name
-                  ? `${item.resume.user.first_name} ${item.resume.user.last_name}`
-                  : 'Anonymous Candidate';
-                
-                return (
-                  <div key={item.id} className="result-card">
-                    <div className="result-header">
-                      <div>
-                        <h3 className="result-title">{candidateName}</h3>
-                        <div className="result-meta">
-                          <span>{item.resume?.user?.email || 'Email not available'}</span>
-                          <span>•</span>
-                          <span>Experience: {item.resume?.experience_level || 'Not specified'}</span>
-                          <span>•</span>
-                          <span>Skills: {item.resume?.skills || 'Not specified'}</span>
-                        </div>
-                      </div>
-                      <div className="result-score">
-                        {(item.score * 100).toFixed(1)}% Match
-                      </div>
-                    </div>
-                    <div className="result-details">
-                      <p className="text-sm text-gray-500 mb-2">
-                        Uploaded: {new Date(item.created_at).toLocaleDateString()}
-                      </p>
-                      {item.resume?.file && (
-                        <button
-                          onClick={() => {
-                            const fileUrl = item.resume.file.startsWith('http')
-                              ? item.resume.file
-                              : `${process.env.REACT_APP_API_URL || ''}${item.resume.file}`;
-                            window.open(fileUrl, '_blank');
-                          }}
-                          className="btn btn-secondary"
-                        >
-                          View Resume
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+          {/* Job Listings */}
+          {!isEditing && <CompanyJobListings />}
         </main>
       </div>
     </div>
