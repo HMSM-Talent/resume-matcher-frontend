@@ -19,16 +19,21 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for automatic token refresh
+// Response interceptor for automatic token refresh and error handling
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
+    // Handle 401 Unauthorized errors
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
         const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
         const response = await axios.post(`${api.defaults.baseURL}/auth/token/refresh/`, {
           refresh: refreshToken,
         });
@@ -39,13 +44,18 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (refreshError) {
+        // Clear tokens and redirect to login
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        window.location.href = '/';
+        localStorage.removeItem('userData');
+        window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }
 
+    // Handle other error cases
+    const errorMessage = error.response?.data?.detail || error.response?.data?.error || 'An error occurred';
+    error.message = errorMessage;
     return Promise.reject(error);
   }
 );
@@ -77,7 +87,7 @@ export const updateUserProfile = (userData) => {
 
 // FILE UPLOADS
 export const uploadResume = (formData) => {
-  return api.post('/upload/resume/', formData, {
+  return api.post('/resumes/upload/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -85,12 +95,7 @@ export const uploadResume = (formData) => {
 };
 
 export const uploadJobDescription = (formData) => {
-  // Log the FormData contents for debugging
-  for (let pair of formData.entries()) {
-    console.log(pair[0] + ': ' + pair[1]);
-  }
-
-  return api.post('/upload/job-description/', formData, {
+  return api.post('/job-descriptions/upload/', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
       'Accept': 'application/json'
@@ -98,19 +103,19 @@ export const uploadJobDescription = (formData) => {
   });
 };
 
-export const getSimilarityScores = () => {
-  return api.get('/similarity-scores/', {
-    params: {
-      candidate_id: JSON.parse(localStorage.getItem('userData'))?.id
-    }
-  });
+// JOB SEARCH AND APPLICATIONS
+export const searchJobDescriptions = (params) => {
+  return api.get('/job-descriptions/search/', { params });
 };
 
 export const getJobDescription = (id) => {
   return api.get(`/job-descriptions/${id}/`);
 };
 
-// JOB APPLICATIONS
+export const getJobDescriptions = (params = {}) => {
+  return api.get('/job-descriptions/', { params });
+};
+
 export const applyForJob = (jobId) => {
   return api.post(`/job-descriptions/${jobId}/apply/`);
 };
@@ -119,14 +124,9 @@ export const getJobApplications = () => {
   return api.get('/job-applications/');
 };
 
-// Get all job descriptions for a company
-export const getJobDescriptions = () => {
-  return api.get('/job-descriptions/');
-};
-
-// Search job descriptions with filters
-export const searchJobDescriptions = (params) => {
-  return api.get('/job-descriptions/search/', { params });
+// SIMILARITY SCORES
+export const getSimilarityScores = (params) => {
+  return api.get('/similarity-scores/', { params });
 };
 
 export default api;

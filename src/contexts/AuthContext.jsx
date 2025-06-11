@@ -1,63 +1,87 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getCurrentUser } from '../api/api';
+import { getCurrentUser, login as apiLogin } from '../api/api';
 
-const AuthContext = createContext(null);
+// Create the context with a default value
+const AuthContext = createContext({
+  user: null,
+  loading: true,
+  error: null,
+  login: () => {},
+  logout: () => {},
+});
 
-export function AuthProvider({ children }) {
+// Create the provider component
+const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      getCurrentUser()
-        .then(response => {
+    const initializeAuth = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
+          const response = await getCurrentUser();
           setUser(response.data);
-        })
-        .catch(() => {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          setUser(null);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      setLoading(false);
-    }
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userData');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
-  const login = (userData, token) => {
-    localStorage.setItem('accessToken', token);
-    setUser(userData);
+  const login = async (userData, accessToken) => {
+    try {
+      setUser(userData);
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('userData', JSON.stringify(userData));
+    } catch (err) {
+      console.error('Login error:', err);
+      throw err;
+    }
   };
 
   const logout = () => {
+    setUser(null);
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userData');
-    setUser(null);
   };
 
   const value = {
     user,
     loading,
+    error,
     login,
     logout,
-    isAuthenticated: !!user
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
+// Create the hook
+const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-} 
+};
+
+// Export everything as a single object
+export {
+  AuthContext,
+  AuthProvider,
+  useAuth,
+}; 
