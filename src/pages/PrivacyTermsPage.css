@@ -1,0 +1,61 @@
+.page-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f9fa;
+}
+
+.privacy-terms-container {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  margin-top: 80px;
+  padding: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.privacy-terms-container h1 {
+  font-size: 2.5rem;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.privacy-terms-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.privacy-terms-header h1 {
+  font-size: 2.5rem;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.privacy-terms-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.privacy-section,
+.terms-section {
+  margin-bottom: 2rem;
+}
+
+.privacy-section h2,
+.terms-section h2 {
+  color: #333;
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 0.5rem;
+}
+
+.privacy-section p,
+.terms-section p {
+  color: #666;
+  line-height: 1.6;
+} 
