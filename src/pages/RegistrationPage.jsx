@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { registerCandidate, registerCompany } from '../api/api';
-import './RegistrationPage.css';
+import { useAuth } from '../contexts/AuthContext';
+import '../styles/Register.css';
 
 function RegistrationPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [userType, setUserType] = useState('candidate');
   const [formData, setFormData] = useState({
     email: '',
@@ -100,14 +102,14 @@ function RegistrationPage() {
       }
   
       const { access, refresh, user } = response.data;
-      localStorage.setItem('accessToken', access);
-      localStorage.setItem('refreshToken', refresh);
-      localStorage.setItem('userData', JSON.stringify(user));
+      
+      // Use the AuthContext's login function
+      login(user, access);
 
       // 🔀 Dynamic redirection based on user role
-      if (user.role === 'candidate') {
+      if (user.role.toLowerCase() === 'candidate') {
         navigate('/candidate/dashboard');
-      } else if (user.role === 'company') {
+      } else if (user.role.toLowerCase() === 'company') {
         navigate('/company/dashboard');
       } else {
         navigate('/dashboard'); // fallback for other roles or admin
@@ -260,18 +262,13 @@ function RegistrationPage() {
             />
           </div>
 
-          <button
-            type="submit"
-            className="register-button"
-            disabled={loading}
-          >
+          <button type="submit" className="register-button" disabled={loading}>
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
         <p className="login-link">
-          Already have an account?{' '}
-          <Link to="/">Sign in here</Link>
+          Already have an account? <Link to="/login">Login here</Link>
         </p>
       </div>
     </div>

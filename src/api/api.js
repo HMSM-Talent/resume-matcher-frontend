@@ -110,4 +110,23 @@ export const getJobDescription = (id) => {
   return api.get(`/job-descriptions/${id}/`);
 };
 
+// JOB APPLICATIONS
+export const applyForJob = (jobId) => {
+  return api.post(`/job-descriptions/${jobId}/apply/`);
+};
+
+export const getJobApplications = () => {
+  return api.get('/job-applications/');
+};
+
+// Get all job descriptions for a company
+export const getJobDescriptions = () => {
+  return api.get('/job-descriptions/');
+};
+
+// Search job descriptions with filters
+export const searchJobDescriptions = (params) => {
+  return api.get('/job-descriptions/search/', { params });
+};
+
 export default api;

@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { login } from '../api/api';
-import './LoginPage.css';
+import { login as apiLogin } from '../api/api';
+import { useAuth } from '../contexts/AuthContext';
+import '../styles/Login.css';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,29 +22,16 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(formData);
+      const response = await apiLogin(formData);
       const { access, refresh, user } = response.data;
 
-      // Store tokens
-      localStorage.setItem('accessToken', access);
-      localStorage.setItem('refreshToken', refresh);
-      
-      // Store complete user data
-      const userData = {
-        ...user,
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
-        email: user.email,
-        role: user.role,
-        company_name: user.company_name || '',
-        phone_number: user.phone_number || ''
-      };
-      localStorage.setItem('userData', JSON.stringify(userData));
+      // Use the AuthContext's login function
+      login(user, access);
 
       // 🔀 Dynamic redirection based on user role
-      if (user.role === 'candidate') {
+      if (user.role.toLowerCase() === 'candidate') {
         navigate('/candidate/dashboard');
-      } else if (user.role === 'company') {
+      } else if (user.role.toLowerCase() === 'company') {
         navigate('/company/dashboard');
       } else {
         navigate('/dashboard'); // fallback for other roles or admin
