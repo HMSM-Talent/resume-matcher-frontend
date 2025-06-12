@@ -102,6 +102,14 @@ function UploadJDPage() {
     if (error) setError('');
   };
 
+  const isFormValid = () => {
+    return formData.title && 
+           formData.location && 
+           formData.job_type && 
+           formData.experience_level && 
+           formData.file;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -114,13 +122,26 @@ function UploadJDPage() {
       formDataToSend.append('location', formData.location);
       formDataToSend.append('job_type', formData.job_type);
       formDataToSend.append('experience_level', formData.experience_level);
-      if (formData.file) formDataToSend.append('file', formData.file);
+      formDataToSend.append('file', formData.file);
+
+      console.log('Sending form data:', {
+        title: formData.title,
+        company_name: formData.company_name,
+        location: formData.location,
+        job_type: formData.job_type,
+        experience_level: formData.experience_level,
+        file: formData.file?.name
+      });
 
       const response = await uploadJobDescription(formDataToSend);
       console.log('Upload response:', response);
-      navigate('/company/dashboard');
+      setSuccess('Job description uploaded successfully!');
+      setTimeout(() => {
+        navigate('/company/dashboard');
+      }, 2000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to upload job description');
+      console.error('Upload error:', err);
+      setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to upload job description');
     } finally {
       setLoading(false);
     }
@@ -166,7 +187,11 @@ function UploadJDPage() {
               name="company_name"
               value={formData.company_name}
               onChange={handleInputChange}
+              maxLength={255}
+              className="form-input"
+              placeholder="e.g., Tech Corp"
             />
+            <small className="text-gray-500">Maximum 255 characters</small>
           </div>
 
           <div className="form-group">
@@ -200,6 +225,7 @@ function UploadJDPage() {
               <option value="PART_TIME">Part Time</option>
               <option value="CONTRACT">Contract</option>
               <option value="INTERNSHIP">Internship</option>
+              <option value="REMOTE">Remote</option>
             </select>
           </div>
 
@@ -214,15 +240,16 @@ function UploadJDPage() {
               className="form-input"
             >
               <option value="">Select Experience Level</option>
-              <option value="ENTRY_LEVEL">Entry Level</option>
-              <option value="MID_LEVEL">Mid Level</option>
-              <option value="SENIOR_LEVEL">Senior Level</option>
-              <option value="EXECUTIVE">Executive</option>
+              <option value="ENTRY">Entry Level</option>
+              <option value="MID">Mid Level</option>
+              <option value="SENIOR">Senior Level</option>
+              <option value="LEAD">Lead</option>
+              <option value="MANAGER">Manager</option>
             </select>
           </div>
 
           <div className="form-group">
-            <label htmlFor="file">Upload PDF (Optional)</label>
+            <label htmlFor="file">Upload PDF *</label>
             <div className="file-upload-container">
               <input
                 type="file"
@@ -231,6 +258,7 @@ function UploadJDPage() {
                 accept=".pdf"
                 onChange={handleFileChange}
                 className="file-input"
+                required
               />
               <label htmlFor="file" className="file-label">
                 {formData.file ? formData.file.name : 'Choose PDF file'}
@@ -241,7 +269,7 @@ function UploadJDPage() {
 
           <button
             type="submit"
-            disabled={loading || !formData.file}
+            disabled={loading || !isFormValid()}
             className="btn btn-primary"
           >
             {loading ? 'Uploading...' : 'Upload Job Description'}
