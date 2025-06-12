@@ -19,6 +19,7 @@ import './styles/Home.css';
 import './styles/Upload.css';
 import CandidateHistoryPage from './pages/CandidateHistoryPage';
 import CompanyHistoryPage from './pages/CompanyHistoryPage';
+import JobApplicationsPage from './pages/JobApplicationsPage';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -131,6 +132,14 @@ function AppRoutes() {
         element={
           <PrivateRoute allowedRoles={['company']}>
             <CompanyHistoryPage />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/company/job/:jobId/applications" 
+        element={
+          <PrivateRoute allowedRoles={['company']}>
+            <JobApplicationsPage />
           </PrivateRoute>
         } 
       />

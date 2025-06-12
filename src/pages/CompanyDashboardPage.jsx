@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCompanyDashboard, closeJob } from '../api/api';
+import { getCompanyDashboard, closeJob, getAllJobApplications } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
 import '../styles/CompanyDashboardPage.css';
 
@@ -8,10 +8,9 @@ const CompanyDashboardPage = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedJobId, setSelectedJobId] = useState(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closeReason, setCloseReason] = useState('');
-  const [closingJobId, setClosingJobId] = useState(null);
   const [isClosing, setIsClosing] = useState(false);
   const [closeError, setCloseError] = useState(null);
   const { user } = useAuth();
@@ -82,60 +81,30 @@ const CompanyDashboardPage = () => {
     fetchJobs();
   }, []);
 
-  const handleCloseJob = async (jobId) => {
-    const jobToClose = jobs.find(job => job.id === jobId);
-    if (!jobToClose) {
-      console.error('Job not found:', jobId);
-      return;
-    }
-    console.log('Job to close:', jobToClose);
-    
-    // Validate UUID format
-    if (typeof jobToClose.id !== 'string' || !jobToClose.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-      console.error('Invalid job ID format:', jobToClose.id);
-      setError('Invalid job ID format. Please refresh the page and try again.');
-      return;
-    }
-    
-    setClosingJobId(jobId);
+  const handleCloseJob = (jobId) => {
+    setSelectedJobId(jobId);
     setShowCloseModal(true);
     setCloseError(null);
     setCloseReason('');
   };
 
   const confirmCloseJob = async () => {
+    if (!selectedJobId) return;
+
     try {
       setIsClosing(true);
       setCloseError(null);
-      
-      // Get the full job data to ensure we have the correct ID
-      const jobToClose = jobs.find(job => job.id === closingJobId);
-      if (!jobToClose) {
-        throw new Error('Job not found in current list');
-      }
-
-      // Validate job ID format
-      if (typeof jobToClose.id !== 'string' || !jobToClose.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        throw new Error('Invalid job ID format');
-      }
-      
-      console.log('Attempting to close job:', jobToClose);
-      const response = await closeJob(jobToClose.id, closeReason);
+      const response = await closeJob(selectedJobId, closeReason);
       console.log('Close job response:', response);
       
-      // Remove the closed job from the list
-      setJobs(prevJobs => prevJobs.filter(job => job.id !== closingJobId));
-
+      // Update the jobs list
+      setJobs(prev => prev.filter(job => job.id !== selectedJobId));
       setShowCloseModal(false);
-      setCloseReason('');
-      setClosingJobId(null);
     } catch (err) {
-      console.error('Error in confirmCloseJob:', err);
+      console.error('Error closing job:', err);
       let errorMessage = 'Failed to close job. Please try again.';
       
-      if (err.message === 'Invalid job ID format') {
-        errorMessage = 'Invalid job ID format. Please refresh the page and try again.';
-      } else if (err.response) {
+      if (err.response) {
         switch (err.response.status) {
           case 400:
             errorMessage = 'This job is already closed.';

@@ -179,8 +179,47 @@ export const getJobDescriptions = (params = {}) => {
   return api.get('/job-descriptions/', { params });
 };
 
-export const getJobApplications = async (jobId) => {
-  return await api.get(`/company/job/${jobId}/applications`);
+export const getJobApplications = async (jobId = null) => {
+  if (jobId) {
+    // For company viewing specific job applications
+    return api.get(`/company/job/${jobId}/applications/`);
+  } else {
+    // For candidate viewing their applications
+    return api.get('/applications/history/');
+  }
+};
+
+export const getAllJobApplications = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    
+    // Add status filter if not 'ALL'
+    if (filters.status && filters.status !== 'ALL') {
+      params.append('status', filters.status);
+    }
+    
+    // Add search term if provided
+    if (filters.search) {
+      params.append('search', filters.search);
+    }
+    
+    // Add date range filters
+    if (filters.startDate) {
+      params.append('start_date', filters.startDate);
+    }
+    if (filters.endDate) {
+      params.append('end_date', filters.endDate);
+    }
+    
+    // Add sorting parameters
+    if (filters.sortBy) {
+      params.append('ordering', filters.order === 'desc' ? `-${filters.sortBy}` : filters.sortBy);
+    }
+    
+    return api.get(`/job-applications/?${params.toString()}`);
+  } catch (error) {
+    throw error;
+  }
 };
 
 export const applyForJob = async (jobId) => {
