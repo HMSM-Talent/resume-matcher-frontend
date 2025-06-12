@@ -26,9 +26,9 @@ function Navbar() {
               <>
                 <button
                   onClick={() => navigate('/company/upload')}
-                  className="btn btn-primary"
+                  className="nav-link"
                 >
-                  Post Job
+                  Upload Job Description
                 </button>
                 <button
                   onClick={() => navigate('/company/history')}
@@ -56,14 +56,9 @@ function Navbar() {
             </button>
           </>
         ) : (
-          <>
-            <button onClick={() => navigate('/login')} className="nav-link">
-              Login
-            </button>
-            <button onClick={() => navigate('/register')} className="nav-link">
-              Register
-            </button>
-          </>
+          <button onClick={() => navigate('/login')} className="nav-link">
+            Login
+          </button>
         )}
       </div>
     </nav>

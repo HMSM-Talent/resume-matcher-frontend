@@ -19,20 +19,35 @@ import './styles/Home.css';
 import './styles/Upload.css';
 import CandidateHistoryPage from './pages/CandidateHistoryPage';
 import CompanyHistoryPage from './pages/CompanyHistoryPage';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function PrivateRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        console.log('No user found, redirecting to login');
+        navigate('/login');
+      } else if (allowedRoles && !allowedRoles.includes(user.role.toLowerCase())) {
+        console.log('User role not allowed, redirecting to home');
+        navigate('/');
+      }
+    }
+  }, [user, loading, allowedRoles, navigate]);
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return null;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role.toLowerCase())) {
-    return <Navigate to="/" />;
+    return null;
   }
 
   return <Layout>{children}</Layout>;
@@ -49,8 +64,16 @@ function AppRoutes() {
       ) : (
         <HomePage />
       )} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/login" element={user ? (
+        <Navigate to={user.role.toLowerCase() === 'candidate' ? '/candidate/dashboard' : '/company/dashboard'} />
+      ) : (
+        <LoginPage />
+      )} />
+      <Route path="/register" element={user ? (
+        <Navigate to={user.role.toLowerCase() === 'candidate' ? '/candidate/dashboard' : '/company/dashboard'} />
+      ) : (
+        <RegisterPage />
+      )} />
       
       {/* Candidate Routes */}
       <Route 

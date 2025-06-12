@@ -23,20 +23,34 @@ function LoginPage() {
 
     try {
       const response = await apiLogin(formData);
+      console.log('Login Response:', response.data); // Debug log
       const { access, refresh, user } = response.data;
 
-      // Use the AuthContext's login function
-      login(user, access);
+      // Store tokens directly first
+      localStorage.setItem('accessToken', access);
+      localStorage.setItem('refreshToken', refresh);
+      localStorage.setItem('userData', JSON.stringify(user));
 
-      // 🔀 Dynamic redirection based on user role
+      // Use the AuthContext's login function
+      login(user, access, refresh);
+
+      console.log('Stored tokens:', { // Debug log
+        accessToken: localStorage.getItem('accessToken'),
+        refreshToken: localStorage.getItem('refreshToken'),
+        userData: localStorage.getItem('userData')
+      });
+
+      // Navigate based on user role
       if (user.role.toLowerCase() === 'candidate') {
         navigate('/candidate/dashboard');
       } else if (user.role.toLowerCase() === 'company') {
         navigate('/company/dashboard');
       } else {
-        navigate('/dashboard'); // fallback for other roles or admin
+        // If role is unknown, redirect to home
+        navigate('/');
       }
     } catch (err) {
+      console.error('Login Error:', err); // Debug log
       let errorMessage = 'Failed to login. Please try again.';
       const errorData = err.response?.data;
       if (errorData) {

@@ -52,14 +52,32 @@ function RegistrationPage() {
       return false;
     }
 
-    if (userType === 'candidate' && (!formData.first_name || !formData.last_name)) {
-      setError('First name and last name are required for candidates');
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
       return false;
     }
 
-    if (userType === 'company' && !formData.company_name) {
-      setError('Company name is required for companies');
-      return false;
+    // Phone number validation (optional but must be in correct format if provided)
+    if (formData.phone_number) {
+      const phoneRegex = /^\+[0-9]{1,15}$/;
+      if (!phoneRegex.test(formData.phone_number)) {
+        setError('Phone number must start with + followed by up to 15 digits');
+        return false;
+      }
+    }
+
+    if (userType === 'candidate') {
+      if (!formData.first_name || !formData.last_name) {
+        setError('First name and last name are required for candidates');
+        return false;
+      }
+    } else if (userType === 'company') {
+      if (!formData.company_name) {
+        setError('Company name is required');
+        return false;
+      }
     }
 
     return true;
@@ -89,34 +107,39 @@ function RegistrationPage() {
         };
         response = await registerCandidate(payload);
       } else {
+        // Company registration payload
         payload = {
           email: formData.email,
           password: formData.password,
           password2: formData.password2,
+          first_name: formData.company_name, // Company name as first_name
+          last_name: '', // Empty last name for company
           profile: {
-            phone_number: formData.phone_number,
             company_name: formData.company_name
           }
         };
+        console.log('Company Registration Payload:', payload); // Debug log
         response = await registerCompany(payload);
       }
   
       const { access, refresh, user } = response.data;
       
       // Use the AuthContext's login function
-      login(user, access);
+      login(user, access, refresh);
 
-      // 🔀 Dynamic redirection based on user role
+      // Navigate based on user role
       if (user.role.toLowerCase() === 'candidate') {
         navigate('/candidate/dashboard');
       } else if (user.role.toLowerCase() === 'company') {
         navigate('/company/dashboard');
       } else {
-        navigate('/dashboard'); // fallback for other roles or admin
+        // If role is unknown, redirect to home
+        navigate('/');
       }
   
     } catch (err) {
       console.error('Full Registration Error:', err);
+      console.error('Error Response Data:', err.response?.data); // Debug log
   
       const errorData = err.response?.data;
       let errorMessage = 'Registration failed. Please try again.';

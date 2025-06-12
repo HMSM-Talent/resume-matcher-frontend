@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getCurrentUser, login as apiLogin } from '../api/api';
+import { getCurrentUser, refreshToken } from '../api/api';
 
 // Create the context with a default value
 const AuthContext = createContext({
@@ -16,19 +16,37 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const checkTokenExpiration = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return false;
+
+      // Try to get current user to validate token
+      const response = await getCurrentUser();
+      setUser(response.data);
+      return true;
+    } catch (err) {
+      console.error('Token validation error:', err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-          const response = await getCurrentUser();
-          setUser(response.data);
+        const isValid = await checkTokenExpiration();
+        if (!isValid) {
+          console.log('No valid token found');
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('userData');
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('userData');
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -37,11 +55,16 @@ const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (userData, accessToken) => {
+  const login = async (userData, accessToken, refreshToken) => {
     try {
+      console.log('Login called with:', { userData, accessToken, refreshToken });
       setUser(userData);
       localStorage.setItem('accessToken', accessToken);
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+      }
       localStorage.setItem('userData', JSON.stringify(userData));
+      console.log('Login successful, user data stored');
     } catch (err) {
       console.error('Login error:', err);
       throw err;
@@ -49,6 +72,7 @@ const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    console.log('Logout called');
     setUser(null);
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');

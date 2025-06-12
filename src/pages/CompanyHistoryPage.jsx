@@ -21,13 +21,28 @@ function CompanyHistoryPage() {
     try {
       setLoading(true);
       setError('');
+      console.log('Fetching company history with filters:', filters);
       const response = await getCompanyHistory(filters);
-      setJobs(response.data.jobs);
+      console.log('Company history response:', response);
+      
+      if (response.data && response.data.data) {
+        console.log('Setting jobs with data:', response.data.data);
+        const jobsData = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+        setJobs(jobsData);
+      } else {
+        console.warn('Unexpected response structure:', response.data);
+        setJobs([]);
+      }
     } catch (err) {
+      console.error('Error fetching company history:', err);
       if (err.response?.status === 401) {
+        console.log('Unauthorized access, redirecting to login');
         navigate('/login');
       } else if (err.response?.status === 403) {
         setError('You do not have permission to view the company history.');
+      } else if (err.response?.status === 500) {
+        setError('Server error occurred. Please try again later or contact support.');
+        console.error('Server error details:', err.response?.data);
       } else {
         setError('Failed to load company history. Please try again.');
       }
@@ -57,7 +72,6 @@ function CompanyHistoryPage() {
     switch (status) {
       case 'ACTIVE': return 'status-active';
       case 'CLOSED': return 'status-closed';
-      case 'DRAFT': return 'status-draft';
       default: return '';
     }
   };
@@ -65,15 +79,13 @@ function CompanyHistoryPage() {
   const getApplicationStatusBadgeClass = (status) => {
     switch (status) {
       case 'PENDING': return 'status-pending';
-      case 'APPROVED': return 'status-approved';
-      case 'DECLINED': return 'status-declined';
-      case 'WITHDRAWN': return 'status-withdrawn';
-      case 'HIRED': return 'status-hired';
+      case 'ACCEPTED': return 'status-approved';
+      case 'REJECTED': return 'status-declined';
       default: return '';
     }
   };
 
-  if (loading && jobs.length === 0) {
+  if (loading) {
     return <div className="loading">Loading company history...</div>;
   }
 
@@ -110,120 +122,91 @@ function CompanyHistoryPage() {
       </div>
 
       <div className="jobs-list">
-        {jobs.length === 0 ? (
+        {!jobs || jobs.length === 0 ? (
           <div className="no-jobs">No job listings found</div>
         ) : (
-          jobs.map(job => (
-            <div key={job.id} className="job-card">
-              <div className="job-header">
-                <div className="job-title-section">
-                  <h2>{job.title}</h2>
-                  <span className={`status-badge ${getStatusBadgeClass(job.status)}`}>
-                    {job.status}
-                  </span>
+          jobs.map(job => {
+            console.log('Rendering job:', job);
+            return (
+              <div key={job.id} className="job-card">
+                <div className="job-header">
+                  <div className="job-title-section">
+                    <h2>{job.title || 'Untitled Job'}</h2>
+                    <span className={`status-badge ${getStatusBadgeClass(job.is_active ? 'ACTIVE' : 'CLOSED')}`}>
+                      {job.is_active ? 'Active' : 'Closed'}
+                    </span>
+                  </div>
+                  <div className="job-meta">
+                    <span className="meta-item">
+                      <i className="fas fa-building"></i> {job.company_name || 'Company Name'}
+                    </span>
+                    <span className="meta-item">
+                      <i className="fas fa-map-marker-alt"></i> {job.location || 'Location'}
+                    </span>
+                    <span className="meta-item">
+                      <i className="fas fa-clock"></i> Posted {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Date not available'}
+                    </span>
+                    <span className="meta-item">
+                      <i className="fas fa-briefcase"></i> {job.job_type || 'Job Type'}
+                    </span>
+                  </div>
                 </div>
-                <div className="job-meta">
-                  <span className="meta-item">
-                    <i className="fas fa-building"></i> {job.company_name}
-                  </span>
-                  <span className="meta-item">
-                    <i className="fas fa-map-marker-alt"></i> {job.location}
-                  </span>
-                  <span className="meta-item">
-                    <i className="fas fa-clock"></i> Posted {new Date(job.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
 
-              <div className="job-stats">
-                <div className="stat">
-                  <span className="stat-label">Total Applications</span>
-                  <span className="stat-value">{job.applications_count.total}</span>
+                <div className="job-stats">
+                  <div className="stat">
+                    <span className="stat-label">Total Applications</span>
+                    <span className="stat-value">{job.application_counts?.total || 0}</span>
+                  </div>
+                  <div className="stat">
+                    <span className="stat-label">High Match</span>
+                    <span className="stat-value">{job.application_counts?.high_match || 0}</span>
+                  </div>
+                  <div className="stat">
+                    <span className="stat-label">Medium Match</span>
+                    <span className="stat-value">{job.application_counts?.medium_match || 0}</span>
+                  </div>
+                  <div className="stat">
+                    <span className="stat-label">Low Match</span>
+                    <span className="stat-value">{job.application_counts?.low_match || 0}</span>
+                  </div>
                 </div>
-                <div className="stat">
-                  <span className="stat-label">Pending</span>
-                  <span className="stat-value">{job.applications_count.pending}</span>
-                </div>
-                <div className="stat">
-                  <span className="stat-label">Shortlisted</span>
-                  <span className="stat-value">{job.applications_count.shortlisted}</span>
-                </div>
-                <div className="stat">
-                  <span className="stat-label">Rejected</span>
-                  <span className="stat-value">{job.applications_count.rejected}</span>
-                </div>
-                <div className="stat">
-                  <span className="stat-label">Withdrawn</span>
-                  <span className="stat-value">{job.applications_count.withdrawn}</span>
-                </div>
-                <div className="stat">
-                  <span className="stat-label">Hired</span>
-                  <span className="stat-value">{job.applications_count.hired}</span>
-                </div>
-              </div>
 
-              <div className="applications-section">
-                <h3>Application History</h3>
-                <table className="applications-table">
-                  <thead>
-                    <tr>
-                      <th onClick={() => handleSort('candidate_name')}>
-                        Candidate
-                        {filters.sortBy === 'candidate_name' && (
-                          <i className={`fas fa-sort-${filters.sortOrder === 'asc' ? 'up' : 'down'}`}></i>
-                        )}
-                      </th>
-                      <th onClick={() => handleSort('applied_at')}>
-                        Applied Date
-                        {filters.sortBy === 'applied_at' && (
-                          <i className={`fas fa-sort-${filters.sortOrder === 'asc' ? 'up' : 'down'}`}></i>
-                        )}
-                      </th>
-                      <th onClick={() => handleSort('status')}>
-                        Status
-                        {filters.sortBy === 'status' && (
-                          <i className={`fas fa-sort-${filters.sortOrder === 'asc' ? 'up' : 'down'}`}></i>
-                        )}
-                      </th>
-                      <th>Feedback</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {job.applications.map(application => (
-                      <tr key={application.id}>
-                        <td>
-                          <a 
-                            href={application.candidate.resume_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="resume-link"
-                          >
-                            {application.candidate.name}
-                          </a>
-                        </td>
-                        <td>{new Date(application.applied_at).toLocaleDateString()}</td>
-                        <td>
-                          <span className={`status-badge ${getApplicationStatusBadgeClass(application.status)}`}>
-                            {application.status}
-                          </span>
-                        </td>
-                        <td>
-                          {application.feedback && (
-                            <div className="feedback-tooltip">
-                              <i className="fas fa-comment"></i>
-                              <div className="tooltip-content">
-                                {application.feedback}
-                              </div>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {job.applications && job.applications.length > 0 && (
+                  <div className="applications-section">
+                    <h3>Applications</h3>
+                    <div className="applications-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Candidate</th>
+                            <th>Applied Date</th>
+                            <th>Status</th>
+                            <th>Match Score</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {job.applications.map(application => (
+                            <tr key={application.id}>
+                              <td>
+                                {`${application.candidate.first_name} ${application.candidate.last_name}`}
+                              </td>
+                              <td>{new Date(application.applied_at).toLocaleDateString()}</td>
+                              <td>
+                                <span className={`status-badge ${getApplicationStatusBadgeClass(application.status)}`}>
+                                  {application.status}
+                                </span>
+                              </td>
+                              <td>{application.similarity_score}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

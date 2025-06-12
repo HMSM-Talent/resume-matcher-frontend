@@ -1,300 +1,391 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCompanyActiveJobs, reviewApplication, closeJob } from '../api/api';
+import { getCompanyDashboard, closeJob } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
-import Modal from '../components/Modal';
-import '../styles/CompanyDashboard.css';
+import '../styles/CompanyDashboardPage.css';
 
-function CompanyDashboardPage() {
+const CompanyDashboardPage = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [reviewModal, setReviewModal] = useState({
-    show: false,
-    application: null,
-    status: '',
-    feedback: ''
-  });
-  const [closeModal, setCloseModal] = useState({
-    show: false,
-    jobId: null,
-    reason: ''
-  });
-  const [processingId, setProcessingId] = useState(null);
+  const [error, setError] = useState(null);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [closeReason, setCloseReason] = useState('');
+  const [closingJobId, setClosingJobId] = useState(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const [closeError, setCloseError] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const fetchJobs = useCallback(async () => {
+  const fetchJobs = async () => {
     try {
       setLoading(true);
-      setError('');
-      const response = await getCompanyActiveJobs();
-      setJobs(response.data.jobs);
-    } catch (err) {
-      if (err.response?.status === 401) {
-        navigate('/login');
-      } else if (err.response?.status === 403) {
-        setError('You do not have permission to view the company dashboard.');
-      } else {
-        setError('Failed to load company dashboard. Please try again.');
+      setError(null);
+      console.log('Fetching jobs for dashboard...');
+      const response = await getCompanyDashboard();
+      console.log('Dashboard response:', response);
+
+      // Check if response has data
+      if (!response.data) {
+        console.error('No data in response');
+        setError('No data received from server');
+        return;
       }
+
+      // Handle different possible response structures
+      let jobsData = [];
+      if (Array.isArray(response.data)) {
+        jobsData = response.data;
+      } else if (response.data.jobs && Array.isArray(response.data.jobs)) {
+        jobsData = response.data.jobs;
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        jobsData = response.data.data;
+      }
+
+      console.log('Processed jobs data:', jobsData);
+
+      // Filter out closed jobs
+      const activeJobs = jobsData.filter(job => job.is_active !== false);
+      console.log('Active jobs:', activeJobs);
+      
+      setJobs(activeJobs);
+    } catch (err) {
+      console.error('Dashboard error:', err);
+      let errorMessage = 'Failed to load dashboard data. Please try again later.';
+      
+      if (err.response) {
+        switch (err.response.status) {
+          case 401:
+            errorMessage = 'Please log in again to view your dashboard.';
+            break;
+          case 403:
+            errorMessage = 'You do not have permission to view this dashboard.';
+            break;
+          case 404:
+            errorMessage = 'Dashboard data not found.';
+            break;
+          case 500:
+            errorMessage = 'Server error. Please try again later.';
+            break;
+          default:
+            errorMessage = err.response.data?.error || errorMessage;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  };
 
   useEffect(() => {
     fetchJobs();
-  }, [fetchJobs]);
+  }, []);
 
-  const handleReview = async () => {
-    if (!reviewModal.application || !reviewModal.status) return;
+  const handleCloseJob = async (jobId) => {
+    const jobToClose = jobs.find(job => job.id === jobId);
+    if (!jobToClose) {
+      console.error('Job not found:', jobId);
+      return;
+    }
+    console.log('Job to close:', jobToClose);
+    
+    // Validate UUID format
+    if (typeof jobToClose.id !== 'string' || !jobToClose.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      console.error('Invalid job ID format:', jobToClose.id);
+      setError('Invalid job ID format. Please refresh the page and try again.');
+      return;
+    }
+    
+    setClosingJobId(jobId);
+    setShowCloseModal(true);
+    setCloseError(null);
+    setCloseReason('');
+  };
 
-    setProcessingId(reviewModal.application.id);
+  const confirmCloseJob = async () => {
     try {
-      await reviewApplication(reviewModal.application.id, {
-        status: reviewModal.status,
-        feedback: reviewModal.feedback
-      });
+      setIsClosing(true);
+      setCloseError(null);
       
-      // Update local state
-      setJobs(prev => prev.map(job => ({
-        ...job,
-        applications: job.applications.map(app => 
-          app.id === reviewModal.application.id
-            ? { ...app, status: reviewModal.status }
-            : app
-        )
-      })));
+      // Get the full job data to ensure we have the correct ID
+      const jobToClose = jobs.find(job => job.id === closingJobId);
+      if (!jobToClose) {
+        throw new Error('Job not found in current list');
+      }
+
+      // Validate job ID format
+      if (typeof jobToClose.id !== 'string' || !jobToClose.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        throw new Error('Invalid job ID format');
+      }
       
-      setReviewModal({ show: false, application: null, status: '', feedback: '' });
+      console.log('Attempting to close job:', jobToClose);
+      const response = await closeJob(jobToClose.id, closeReason);
+      console.log('Close job response:', response);
+      
+      // Remove the closed job from the list
+      setJobs(prevJobs => prevJobs.filter(job => job.id !== closingJobId));
+
+      setShowCloseModal(false);
+      setCloseReason('');
+      setClosingJobId(null);
     } catch (err) {
-      setError('Failed to update application status. Please try again.');
+      console.error('Error in confirmCloseJob:', err);
+      let errorMessage = 'Failed to close job. Please try again.';
+      
+      if (err.message === 'Invalid job ID format') {
+        errorMessage = 'Invalid job ID format. Please refresh the page and try again.';
+      } else if (err.response) {
+        switch (err.response.status) {
+          case 400:
+            errorMessage = 'This job is already closed.';
+            break;
+          case 403:
+            errorMessage = 'You are not authorized to close this job.';
+            break;
+          case 404:
+            errorMessage = 'Job not found. Please refresh the page and try again.';
+            break;
+          default:
+            errorMessage = err.response.data?.message || errorMessage;
+        }
+      }
+      
+      setCloseError(errorMessage);
     } finally {
-      setProcessingId(null);
+      setIsClosing(false);
     }
   };
 
-  const handleCloseJob = async () => {
-    if (!closeModal.jobId) return;
-
-    setProcessingId(closeModal.jobId);
-    try {
-      await closeJob(closeModal.jobId, { reason: closeModal.reason });
-      
-      // Update local state
-      setJobs(prev => prev.filter(job => job.id !== closeModal.jobId));
-      
-      setCloseModal({ show: false, jobId: null, reason: '' });
-    } catch (err) {
-      setError('Failed to close job listing. Please try again.');
-    } finally {
-      setProcessingId(null);
-    }
+  // Helper function to display shortened job ID
+  const displayJobId = (jobId) => {
+    if (!jobId) return 'N/A';
+    return jobId.substring(0, 8) + '...';
   };
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 'PENDING': return 'status-pending';
-      case 'APPROVED': return 'status-approved';
-      case 'DECLINED': return 'status-declined';
-      case 'WITHDRAWN': return 'status-withdrawn';
-      default: return '';
+      case 'PENDING':
+        return 'status-badge-pending';
+      case 'ACCEPTED':
+        return 'status-badge-approved';
+      case 'REJECTED':
+        return 'status-badge-declined';
+      default:
+        return '';
     }
   };
 
-  if (loading && jobs.length === 0) {
-    return <div className="loading">Loading company dashboard...</div>;
+  if (loading) {
+    return (
+      <div className="dashboard-container">
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+          <p>Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="dashboard-container">
+        <div className="error-message">
+          <i className="fas fa-exclamation-circle"></i>
+          <p>{error}</p>
+          <button onClick={fetchJobs} className="btn btn-primary">
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="company-dashboard-container">
-      <h1>Company Dashboard</h1>
-      
-      {error && <div className="error-message">{error}</div>}
+    <div className="dashboard-container">
+      <div className="dashboard-header">
+        <h1>Company Dashboard</h1>
+        <button 
+          onClick={() => navigate('/company/upload')} 
+          className="btn btn-primary"
+        >
+          <i className="fas fa-plus"></i> Post New Job
+        </button>
+      </div>
 
-      <div className="jobs-list">
-        {jobs.length === 0 ? (
-          <div className="no-jobs">No active job listings found</div>
-        ) : (
-          jobs.map(job => (
+      {!jobs || jobs.length === 0 ? (
+        <div className="no-jobs-message">
+          <i className="fas fa-briefcase"></i>
+          <h2>No Active Jobs</h2>
+          <p>Start by posting your first job opening</p>
+          <button 
+            onClick={() => navigate('/company/upload')} 
+            className="btn btn-primary"
+          >
+            Post a Job
+          </button>
+        </div>
+      ) : (
+        <div className="jobs-grid">
+          {jobs.map((job) => (
             <div key={job.id} className="job-card">
               <div className="job-header">
                 <h2>{job.title}</h2>
-                <div className="job-stats">
-                  <div className="stat">
-                    <span className="stat-label">Total Applications:</span>
-                    <span className="stat-value">{job.applications_count.total}</span>
+                <div className="job-id">ID: {displayJobId(job.id)}</div>
+                <button
+                  onClick={() => handleCloseJob(job.id)}
+                  className="btn btn-danger btn-sm"
+                >
+                  <i className="fas fa-times"></i> Close Job
+                </button>
+              </div>
+
+              <div className="job-stats-grid">
+                <div className="stat-card total">
+                  <div className="stat-icon">
+                    <i className="fas fa-users"></i>
                   </div>
-                  <div className="stat">
-                    <span className="stat-label">Pending:</span>
-                    <span className="stat-value">{job.applications_count.pending}</span>
+                  <div className="stat-content">
+                    <span className="stat-value">{job.application_counts?.total || 0}</span>
+                    <span className="stat-label">Total Applications</span>
                   </div>
-                  <div className="stat">
-                    <span className="stat-label">Approved:</span>
-                    <span className="stat-value">{job.applications_count.approved}</span>
+                </div>
+
+                <div className="stat-card high-match">
+                  <div className="stat-icon">
+                    <i className="fas fa-star"></i>
                   </div>
-                  <div className="stat">
-                    <span className="stat-label">Declined:</span>
-                    <span className="stat-value">{job.applications_count.declined}</span>
+                  <div className="stat-content">
+                    <span className="stat-value">{job.application_counts?.high_match || 0}</span>
+                    <span className="stat-label">High Match</span>
+                  </div>
+                </div>
+
+                <div className="stat-card medium-match">
+                  <div className="stat-icon">
+                    <i className="fas fa-star-half-alt"></i>
+                  </div>
+                  <div className="stat-content">
+                    <span className="stat-value">{job.application_counts?.medium_match || 0}</span>
+                    <span className="stat-label">Medium Match</span>
+                  </div>
+                </div>
+
+                <div className="stat-card low-match">
+                  <div className="stat-icon">
+                    <i className="fas fa-star"></i>
+                  </div>
+                  <div className="stat-content">
+                    <span className="stat-value">{job.application_counts?.low_match || 0}</span>
+                    <span className="stat-label">Low Match</span>
                   </div>
                 </div>
               </div>
 
-              <div className="applications-section">
-                <h3>Applications</h3>
-                <table className="applications-table">
-                  <thead>
-                    <tr>
-                      <th>Candidate</th>
-                      <th>Match Score</th>
-                      <th>Applied Date</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {job.applications.map(application => (
-                      <tr key={application.id}>
-                        <td>
-                          <a 
-                            href={application.candidate.resume_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="resume-link"
-                          >
-                            {application.candidate.name}
-                          </a>
-                        </td>
-                        <td>{application.score}%</td>
-                        <td>{new Date(application.applied_at).toLocaleDateString()}</td>
-                        <td>
+              {job.applications && job.applications.length > 0 && (
+                <div className="applications-section">
+                  <h3>Recent Applications</h3>
+                  <div className="applications-list">
+                    {job.applications.slice(0, 3).map((application) => (
+                      <div key={application.id} className="application-card">
+                        <div className="application-header">
+                          <span className="candidate-name">
+                            {`${application.candidate.first_name} ${application.candidate.last_name}`}
+                          </span>
                           <span className={`status-badge ${getStatusBadgeClass(application.status)}`}>
                             {application.status}
                           </span>
-                        </td>
-                        <td>
-                          {application.status === 'PENDING' && (
-                            <button
-                              onClick={() => setReviewModal({
-                                show: true,
-                                application,
-                                status: '',
-                                feedback: ''
-                              })}
-                              className="btn btn-primary"
-                            >
-                              Review
-                            </button>
-                          )}
-                        </td>
-                      </tr>
+                        </div>
+                        <div className="application-details">
+                          <span className="score">
+                            <i className="fas fa-star"></i> Score: {application.similarity_score}%
+                          </span>
+                          <span className="date">
+                            <i className="fas fa-calendar"></i> {new Date(application.applied_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/company/application/${application.id}`)}
+                          className="btn btn-secondary btn-sm"
+                        >
+                          View Details
+                        </button>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="job-actions">
-                <button
-                  onClick={() => setCloseModal({ show: true, jobId: job.id, reason: '' })}
-                  disabled={processingId === job.id}
-                  className="btn btn-danger"
-                >
-                  {processingId === job.id ? 'Closing...' : 'Close Job'}
-                </button>
-              </div>
+                  </div>
+                  {job.applications.length > 3 && (
+                    <button
+                      onClick={() => navigate(`/company/job/${job.id}/applications`)}
+                      className="btn btn-link"
+                    >
+                      View All Applications
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* Review Application Modal */}
-      <Modal
-        isOpen={reviewModal.show}
-        onClose={() => setReviewModal({ show: false, application: null, status: '', feedback: '' })}
-        title="Review Application"
-        actions={
-          <>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setReviewModal({ show: false, application: null, status: '', feedback: '' })}
-            >
-              Cancel
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={handleReview}
-              disabled={!reviewModal.status || processingId === reviewModal.application?.id}
-            >
-              {processingId === reviewModal.application?.id ? 'Processing...' : 'Submit Review'}
-            </button>
-          </>
-        }
-      >
-        <div className="review-form">
-          <div className="form-group">
-            <label>Status:</label>
-            <select
-              value={reviewModal.status}
-              onChange={(e) => setReviewModal(prev => ({ ...prev, status: e.target.value }))}
-              className="form-select"
-            >
-              <option value="">Select Status</option>
-              <option value="APPROVED">Approve</option>
-              <option value="DECLINED">Decline</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Feedback (optional):</label>
-            <textarea
-              value={reviewModal.feedback}
-              onChange={(e) => setReviewModal(prev => ({ ...prev, feedback: e.target.value }))}
-              className="form-textarea"
-              placeholder="Add feedback for the candidate..."
-              rows="4"
-            />
+      {showCloseModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Close Job Posting</h2>
+            <p>Are you sure you want to close this job posting? This action cannot be undone.</p>
+            
+            {closeError && (
+              <div className="error-message">
+                <i className="fas fa-exclamation-circle"></i>
+                <p>{closeError}</p>
+              </div>
+            )}
+
+            <div className="form-group">
+              <label htmlFor="closeReason">Reason for closing (optional):</label>
+              <textarea
+                id="closeReason"
+                value={closeReason}
+                onChange={(e) => setCloseReason(e.target.value)}
+                placeholder="Enter reason for closing the job..."
+                rows="3"
+                disabled={isClosing}
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button
+                onClick={() => {
+                  setShowCloseModal(false);
+                  setCloseReason('');
+                  setClosingJobId(null);
+                  setCloseError(null);
+                }}
+                className="btn btn-secondary"
+                disabled={isClosing}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmCloseJob} 
+                className="btn btn-danger"
+                disabled={isClosing}
+              >
+                {isClosing ? (
+                  <>
+                    <span className="spinner-small"></span>
+                    Closing...
+                  </>
+                ) : (
+                  'Confirm Close'
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      </Modal>
-
-      {/* Close Job Modal */}
-      <Modal
-        isOpen={closeModal.show}
-        onClose={() => setCloseModal({ show: false, jobId: null, reason: '' })}
-        title="Close Job Listing"
-        actions={
-          <>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setCloseModal({ show: false, jobId: null, reason: '' })}
-            >
-              Cancel
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={handleCloseJob}
-              disabled={processingId === closeModal.jobId}
-            >
-              {processingId === closeModal.jobId ? 'Closing...' : 'Confirm Close'}
-            </button>
-          </>
-        }
-      >
-        <div className="close-form">
-          <div className="form-group">
-            <label>Reason for Closing (optional):</label>
-            <textarea
-              value={closeModal.reason}
-              onChange={(e) => setCloseModal(prev => ({ ...prev, reason: e.target.value }))}
-              className="form-textarea"
-              placeholder="Add reason for closing this job listing..."
-              rows="4"
-            />
-          </div>
-        </div>
-      </Modal>
+      )}
     </div>
   );
-}
+};
 
 export default CompanyDashboardPage;
