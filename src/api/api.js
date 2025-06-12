@@ -116,17 +116,86 @@ export const getJobDescriptions = (params = {}) => {
   return api.get('/job-descriptions/', { params });
 };
 
-export const applyForJob = (jobId) => {
-  return api.post(`/job-descriptions/${jobId}/apply/`);
+export const getJobApplications = async (params = {}) => {
+  return api.get('/job-applications/', { params });
 };
 
-export const getJobApplications = () => {
-  return api.get('/job-applications/');
+export const applyForJob = async (jobId) => {
+  return api.post(`/job-descriptions/${jobId}/apply/`);
 };
 
 // SIMILARITY SCORES
 export const getSimilarityScores = (params) => {
   return api.get('/similarity-scores/', { params });
+};
+
+// Job Applications API
+export const getApplicationHistory = async (filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    
+    // Add status filter if not 'ALL'
+    if (filters.status && filters.status !== 'ALL') {
+      params.append('status', filters.status);
+    }
+    
+    // Add search term if provided
+    if (filters.search) {
+      params.append('search', filters.search);
+    }
+    
+    // Add date range filters
+    if (filters.startDate) {
+      params.append('start_date', filters.startDate);
+    }
+    if (filters.endDate) {
+      params.append('end_date', filters.endDate);
+    }
+    
+    // Add sorting parameters
+    if (filters.sortBy) {
+      params.append('ordering', filters.order === 'desc' ? `-${filters.sortBy}` : filters.sortBy);
+    }
+    
+    const response = await api.get(`/applications/history/?${params.toString()}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const withdrawApplication = async (applicationId) => {
+  return api.post(`/applications/${applicationId}/withdraw/`);
+};
+
+// Company Dashboard API
+export const getCompanyActiveJobs = async () => {
+  return await api.get('/company/dashboard/');
+};
+
+export const reviewApplication = async (applicationId, data) => {
+  return await api.post(`/applications/${applicationId}/review/`, data);
+};
+
+export const closeJob = async (jobId, data) => {
+  return await api.post(`/job-descriptions/${jobId}/close/`, data);
+};
+
+// Company History API
+export const getCompanyJobHistory = async (params = {}) => {
+  return api.get('/company/jobs/history/', { params });
+};
+
+export const reopenJob = async (jobId) => {
+  return api.post(`/jobs/${jobId}/reopen/`);
+};
+
+export const exportJobApplications = async (jobId) => {
+  return api.get(`/jobs/${jobId}/applications/export/`);
+};
+
+export const getCompanyHistory = async (params = {}) => {
+  return await api.get('/company/history/', { params });
 };
 
 export default api;

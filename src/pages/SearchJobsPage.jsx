@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { searchJobDescriptions, applyForJob, getSimilarityScores } from '../api/api';
+import { searchJobDescriptions, applyForJob, getSimilarityScores, getJobApplications } from '../api/api';
 import '../styles/SearchJobs.css';
 
 function SearchJobsPage() {
@@ -12,6 +12,7 @@ function SearchJobsPage() {
   const [error, setError] = useState('');
   const [applyingJobs, setApplyingJobs] = useState(new Set());
   const [applyError, setApplyError] = useState('');
+  const [appliedJobs, setAppliedJobs] = useState(new Set());
   const [filters, setFilters] = useState({
     search: '',
     jobType: '',
@@ -46,11 +47,61 @@ function SearchJobsPage() {
     try {
       setApplyingJobs(prev => new Set([...prev, jobId]));
       setApplyError('');
-      await applyForJob(jobId);
-      // Refresh the jobs list to update application status
-      fetchJobs();
+      const response = await applyForJob(jobId);
+      
+      // Handle success response
+      if (response.data.status === 'success') {
+        // Update the applied jobs set with the job ID from the response
+        const jobIdFromResponse = response.data.data.job;
+        setAppliedJobs(prev => new Set([...prev, jobIdFromResponse]));
+        
+        // Update the jobs list to reflect the application
+        setJobs(prev => prev.map(job => 
+          job.id === jobIdFromResponse 
+            ? { ...job, has_applied: true }
+            : job
+        ));
+
+        // Show success message for resubmission
+        if (response.data.message === 'Application resubmitted successfully') {
+          setApplyError(`Job ${jobId}: Application resubmitted successfully`);
+          // Clear the success message after 3 seconds
+          setTimeout(() => {
+            setApplyError('');
+          }, 3000);
+        }
+      }
     } catch (err) {
-      setApplyError(err.response?.data?.detail || 'Failed to apply for the job. Please try again.');
+      // Handle error responses
+      if (err.response?.data) {
+        const { status, message, detail, data } = err.response.data;
+        
+        // If we have data in the error response
+        if (data) {
+          const jobIdFromResponse = data.job;
+          const applicationStatus = data.status;
+
+          // Update UI based on application status
+          if (applicationStatus === 'WITHDRAWN') {
+            // For withdrawn applications, we can try to reapply
+            setAppliedJobs(prev => new Set([...prev, jobIdFromResponse]));
+            setJobs(prev => prev.map(job => 
+              job.id === jobIdFromResponse 
+                ? { ...job, has_applied: true }
+                : job
+            ));
+          } else if (['REJECTED', 'HIRED'].includes(applicationStatus)) {
+            // For final states, show the error message
+            setApplyError(`Job ${jobId}: ${detail || message || 'Cannot re-apply for this job'}`);
+          }
+        } else {
+          // Show the error message for other cases
+          setApplyError(`Job ${jobId}: ${detail || message || 'Failed to apply for the job'}`);
+        }
+      } else {
+        // Handle network errors or unexpected errors
+        setApplyError(`Job ${jobId}: Failed to apply for the job. Please try again.`);
+      }
     } finally {
       setApplyingJobs(prev => {
         const newSet = new Set(prev);
@@ -69,7 +120,7 @@ function SearchJobsPage() {
       const searchParams = {
         ...filters,
         page: pagination.currentPage,
-        ordering: sortBy === 'score' ? '-score_value' : '-created_at', // Using score_value for sorting
+        ordering: sortBy === 'score' ? '-score_value' : '-created_at',
         min_score: filters.minScore
       };
       const response = await searchJobDescriptions(searchParams);
@@ -95,8 +146,18 @@ function SearchJobsPage() {
         setJobs(jobsWithScores);
       } catch (scoreErr) {
         console.error('Error fetching scores:', scoreErr);
-        // If scores can't be fetched, still show jobs without scores
         setJobs(jobsData);
+      }
+
+      // Fetch user's applications
+      try {
+        const applicationsRes = await getJobApplications();
+        if (applicationsRes.data && Array.isArray(applicationsRes.data)) {
+          const appliedJobIds = new Set(applicationsRes.data.map(app => app.job));
+          setAppliedJobs(appliedJobIds);
+        }
+      } catch (appErr) {
+        console.error('Error fetching applications:', appErr);
       }
 
       setPagination(prev => ({
@@ -287,15 +348,29 @@ function SearchJobsPage() {
                             View Job Description
                           </button>
                         )}
-                        <button
-                          onClick={() => handleApply(job.id)}
-                          disabled={applyingJobs.has(job.id) || !job.is_active}
-                          className="btn btn-primary"
-                        >
-                          {applyingJobs.has(job.id) ? 'Applying...' : 'Apply'}
-                        </button>
+                        {appliedJobs.has(job.id) ? (
+                          <div className="application-status">
+                            <span className="status-badge status-pending">Applied</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleApply(job.id)}
+                            disabled={applyingJobs.has(job.id) || !job.is_active}
+                            className="btn btn-primary"
+                          >
+                            {applyingJobs.has(job.id) ? 'Applying...' : 'Apply'}
+                          </button>
+                        )}
                       </div>
-                      {applyError && <p className="text-red-500 text-sm mt-2">{applyError}</p>}
+                      {applyError && applyError.startsWith(`Job ${job.id}:`) && (
+                        <p className={`text-sm mt-2 ${
+                          applyError.includes('resubmitted successfully') 
+                            ? 'text-green-500' 
+                            : 'text-red-500'
+                        }`}>
+                          {applyError.replace(`Job ${job.id}:`, '')}
+                        </p>
+                      )}
                       {!job.is_active && (
                         <p className="text-yellow-500 text-sm mt-2">This job posting is no longer active</p>
                       )}

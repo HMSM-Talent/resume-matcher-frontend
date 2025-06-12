@@ -17,6 +17,8 @@ import './styles/Login.css';
 import './styles/Register.css';
 import './styles/Home.css';
 import './styles/Upload.css';
+import CandidateHistoryPage from './pages/CandidateHistoryPage';
+import CompanyHistoryPage from './pages/CompanyHistoryPage';
 
 function PrivateRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth();
@@ -75,6 +77,14 @@ function AppRoutes() {
           </PrivateRoute>
         } 
       />
+      <Route 
+        path="/applications/history" 
+        element={
+          <PrivateRoute allowedRoles={['candidate']}>
+            <CandidateHistoryPage />
+          </PrivateRoute>
+        } 
+      />
 
       {/* Company Routes */}
       <Route 
@@ -90,6 +100,14 @@ function AppRoutes() {
         element={
           <PrivateRoute allowedRoles={['company']}>
             <UploadJDPage />
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/company/history" 
+        element={
+          <PrivateRoute allowedRoles={['company']}>
+            <CompanyHistoryPage />
           </PrivateRoute>
         } 
       />

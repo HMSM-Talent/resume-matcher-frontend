@@ -23,12 +23,20 @@ function Navbar() {
               Dashboard
             </button>
             {user.role.toLowerCase() === 'company' && (
-              <button
-                onClick={() => navigate('/company/upload')}
-                className="btn btn-primary"
-              >
-                Post Job
-              </button>
+              <>
+                <button
+                  onClick={() => navigate('/company/upload')}
+                  className="btn btn-primary"
+                >
+                  Post Job
+                </button>
+                <button
+                  onClick={() => navigate('/company/history')}
+                  className="nav-link"
+                >
+                  Job History
+                </button>
+              </>
             )}
             {user.role.toLowerCase() === 'candidate' && (
               <>
@@ -37,6 +45,9 @@ function Navbar() {
                 </button>
                 <button onClick={() => navigate('/candidate/upload')} className="nav-link">
                   Upload Resume
+                </button>
+                <button onClick={() => navigate('/applications/history')} className="nav-link">
+                  Application History
                 </button>
               </>
             )}
