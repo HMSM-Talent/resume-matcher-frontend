@@ -39,6 +39,8 @@ const CompanyDashboardPage = () => {
         jobsData = response.data.jobs;
       } else if (response.data.data && Array.isArray(response.data.data)) {
         jobsData = response.data.data;
+      } else if (response.data.data?.jobs && Array.isArray(response.data.data.jobs)) {
+        jobsData = response.data.data.jobs;
       }
 
       console.log('Processed jobs data:', jobsData);

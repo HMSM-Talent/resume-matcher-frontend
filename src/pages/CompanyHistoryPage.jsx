@@ -188,15 +188,15 @@ function CompanyHistoryPage() {
                     {job.applications.map(application => (
                       <tr key={application.id}>
                         <td>
-                                {`${application.candidate.first_name} ${application.candidate.last_name}`}
+                          {`${application.user.first_name} ${application.user.last_name}`}
                         </td>
-                        <td>{new Date(application.applied_at).toLocaleDateString()}</td>
+                        <td>{new Date(application.updated_at).toLocaleDateString()}</td>
                         <td>
                           <span className={`status-badge ${getApplicationStatusBadgeClass(application.status)}`}>
                             {application.status}
                           </span>
                         </td>
-                              <td>{application.similarity_score}%</td>
+                        <td>{Math.round(application.similarity_score * 100)}%</td>
                       </tr>
                     ))}
                   </tbody>
