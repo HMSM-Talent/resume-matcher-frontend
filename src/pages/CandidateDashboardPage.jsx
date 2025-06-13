@@ -24,24 +24,8 @@ function CandidateDashboardPage() {
         try {
           const scoreRes = await getSimilarityScores();
           const jobs = Array.isArray(scoreRes.data.results) ? scoreRes.data.results : [];
-          setJobs(jobs);
-
-          // Fetch job description details for each job
-          const jobDetailsPromises = jobs.map(async (job) => {
-            try {
-              const jobRes = await getJobDescription(job.job_description);
-              return { [job.job_description]: jobRes.data };
-            } catch (err) {
-              console.error(`Failed to fetch job description ${job.job_description}:`, err);
-              return { [job.job_description]: null };
-            }
-          });
-
-          const jobDetailsResults = await Promise.all(jobDetailsPromises);
-          const jobDetailsMap = jobDetailsResults.reduce((acc, curr) => ({ ...acc, ...curr }), {});
-          setJobDetails(jobDetailsMap);
-
-          // Fetch job applications using the history endpoint
+          
+          // Fetch job applications first
           try {
             const applicationsRes = await getJobApplications();
             const applicationsMap = {};
@@ -54,12 +38,34 @@ function CandidateDashboardPage() {
             }
             setJobApplications(applicationsMap);
             setApplicationStatus(statusMap);
+
+            // Filter out jobs that have already been applied for
+            const filteredJobs = jobs.filter(job => {
+              const application = applicationsMap[job.job_description];
+              // Show job if it hasn't been applied for or if it was withdrawn
+              return !application || application.status === 'WITHDRAWN';
+            });
+            setJobs(filteredJobs);
+
+            // Fetch job description details for each remaining job
+            const jobDetailsPromises = filteredJobs.map(async (job) => {
+              try {
+                const jobRes = await getJobDescription(job.job_description);
+                return { [job.job_description]: jobRes.data };
+              } catch (err) {
+                console.error(`Failed to fetch job description ${job.job_description}:`, err);
+                return { [job.job_description]: null };
+              }
+            });
+
+            const jobDetailsResults = await Promise.all(jobDetailsPromises);
+            const jobDetailsMap = jobDetailsResults.reduce((acc, curr) => ({ ...acc, ...curr }), {});
+            setJobDetails(jobDetailsMap);
           } catch (appErr) {
             console.error('Error fetching applications:', appErr);
-            // Don't set error state for application fetch failure
-            // Just log it and continue with empty applications
             setJobApplications({});
             setApplicationStatus({});
+            setJobs(jobs);
           }
         } catch (scoreErr) {
           console.error('Failed to fetch similarity scores:', scoreErr);
@@ -83,22 +89,40 @@ function CandidateDashboardPage() {
     try {
       setApplyingJobs(prev => new Set([...prev, jobId]));
       setApplyError('');
-      await applyForJob(jobId);
       
-      // Update the applications list after successful application
-      try {
-        const response = await getJobApplications();
-        const applicationsMap = {};
-        if (Array.isArray(response.data)) {
-          response.data.forEach(app => {
-            applicationsMap[app.job] = app;
-          });
+      // Immediately update the UI to show pending status
+      setJobApplications(prev => ({
+        ...prev,
+        [jobId]: {
+          id: 'pending',
+          job: jobId,
+          status: 'PENDING',
+          updated_at: new Date().toISOString()
         }
-        setJobApplications(applicationsMap);
-      } catch (appErr) {
-        console.error('Error updating applications after apply:', appErr);
-        // Don't show error to user, just log it
-      }
+      }));
+
+      const response = await applyForJob(jobId);
+      
+      // Update the applications map with the response data
+      setJobApplications(prev => ({
+        ...prev,
+        [jobId]: {
+          id: response.data.id,
+          job: jobId,
+          status: response.data.status || 'PENDING',
+          updated_at: response.data.updated_at || new Date().toISOString(),
+          similarity_score: response.data.similarity_score
+        }
+      }));
+
+      // Remove the job from the dashboard
+      setJobs(prev => prev.filter(job => job.job_description !== jobId));
+      setJobDetails(prev => {
+        const newDetails = { ...prev };
+        delete newDetails[jobId];
+        return newDetails;
+      });
+
     } catch (err) {
       console.error('Error applying for job:', err);
       let errorMessage = 'Failed to apply for the job. Please try again.';
@@ -110,6 +134,13 @@ function CandidateDashboardPage() {
       }
       
       setApplyError(errorMessage);
+
+      // Remove the pending status on error
+      setJobApplications(prev => {
+        const newApps = { ...prev };
+        delete newApps[jobId];
+        return newApps;
+      });
     } finally {
       setApplyingJobs(prev => {
         const newSet = new Set(prev);
@@ -177,7 +208,7 @@ function CandidateDashboardPage() {
             <h2>No Matching Jobs Found</h2>
             <p>We couldn't find any jobs that match your profile.</p>
             <button 
-              onClick={() => navigate('/search')} 
+              onClick={() => navigate('/candidate/search')} 
               className="btn btn-primary"
             >
               Browse All Jobs
@@ -235,7 +266,7 @@ function CandidateDashboardPage() {
                             {status}
                           </span>
                           <span className="text-sm text-gray-500 ml-2">
-                            Applied on {new Date(jobApplications[jobDetail.id].applied_at).toLocaleDateString()}
+                            Applied on {new Date(jobApplications[jobDetail.id].updated_at).toLocaleDateString()}
                           </span>
                         </div>
                       ) : (

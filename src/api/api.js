@@ -42,78 +42,20 @@ api.interceptors.request.use(
 // Response interceptor for automatic token refresh and error handling
 api.interceptors.response.use(
   (response) => {
-    console.log('Response received:', response.config.url); // Debug log
+    console.log('Response received:', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    });
     return response;
   },
-  async (error) => {
+  (error) => {
     console.error('API Error:', {
       url: error.config?.url,
       status: error.response?.status,
-      data: error.response?.data
-    }); // Debug log
-
-    const originalRequest = error.config;
-
-    // Handle 401 Unauthorized errors
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        // If token refresh is in progress, queue the request
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then(token => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
-          })
-          .catch(err => Promise.reject(err));
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          console.log('No refresh token available, redirecting to login');
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('userData');
-          window.location.href = '/login';
-          return Promise.reject(error);
-        }
-
-        console.log('Attempting to refresh token...');
-        const response = await axios.post(`${API_URL}/auth/token/refresh/`, {
-          refresh: refreshToken,
-        });
-
-        const { access } = response.data;
-        console.log('Token refreshed successfully');
-        localStorage.setItem('accessToken', access);
-        originalRequest.headers.Authorization = `Bearer ${access}`;
-
-        // Process any queued requests
-        processQueue(null, access);
-        isRefreshing = false;
-
-        return api(originalRequest);
-      } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
-        processQueue(refreshError, null);
-        isRefreshing = false;
-        
-        // Clear tokens and redirect to login
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('userData');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
-    }
-
-    // Handle other error cases
-    const errorMessage = error.response?.data?.detail || error.response?.data?.error || 'An error occurred';
-    error.message = errorMessage;
+      data: error.response?.data,
+      message: error.message
+    });
     return Promise.reject(error);
   }
 );
@@ -143,32 +85,37 @@ export const updateUserProfile = (userData) => {
   return api.patch('/auth/me/', userData);
 };
 
-// FILE UPLOADS
-export const uploadResume = (formData) => {
-  return api.post('/upload/resume/', formData, {
+// RESUME MANAGEMENT
+export const uploadResume = async (formData) => {
+  return api.post('/resumes/upload/', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+      'Content-Type': 'multipart/form-data',
+    },
   });
 };
 
-export const uploadJobDescription = (data) => {
-  // If data is FormData (file upload), use multipart/form-data
-  if (data instanceof FormData) {
-    return api.post('/upload/job-description/', data, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        'Accept': 'application/json'
-      }
-    });
-  }
-  // Otherwise, send as JSON
-  return api.post('/upload/job-description/', data);
+export const getResume = async () => {
+  return api.get('/resumes/');
+};
+
+// JOB DESCRIPTION MANAGEMENT
+export const uploadJobDescription = async (formData) => {
+  return api.post('/job-descriptions/upload/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
 };
 
 // JOB SEARCH AND APPLICATIONS
 export const searchJobDescriptions = (params) => {
-  return api.get('/job-descriptions/search/', { params });
+  return api.get('/job-descriptions/search/', { 
+    params: {
+      ...params,
+      // Ensure minScore is sent as a number
+      minScore: params.minScore ? Number(params.minScore) : undefined
+    } 
+  });
 };
 
 export const getJobDescription = (id) => {
@@ -180,12 +127,56 @@ export const getJobDescriptions = (params = {}) => {
 };
 
 export const getJobApplications = async (jobId = null) => {
-  if (jobId) {
-    // For company viewing specific job applications
-    return api.get(`/company/job/${jobId}/applications/`);
-  } else {
-    // For candidate viewing their applications
-    return api.get('/applications/history/');
+  try {
+    if (jobId) {
+      // For company viewing specific job applications
+      return api.get(`/company/job/${jobId}/applications/`);
+    } else {
+      // For candidate viewing their applications
+      console.log('Fetching application history...');
+      const response = await api.get('/applications/history/');
+      console.log('Raw application history response:', response);
+      
+      // The response is now a direct array of applications
+      if (Array.isArray(response.data)) {
+        // Transform the data to match the expected format
+        const transformedData = {
+          data: response.data.map(app => ({
+            id: app.id,
+            job: app.job,
+            job_title: app.job_title,
+            company_name: app.company_name,
+            job_file_url: app.job_file_url,
+            status: app.status,
+            applied_at: app.applied_at,
+            updated_at: app.updated_at,
+            similarity_score: app.similarity_score,
+            company_feedback: app.company_feedback
+          }))
+        };
+        console.log('Transformed application data:', transformedData);
+        return transformedData;
+      }
+      throw new Error('Invalid response format: expected an array of applications');
+    }
+  } catch (error) {
+    console.error('Application history error:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      stack: error.stack
+    });
+    
+    if (error.response?.status === 401) {
+      throw new Error('Please log in to view your applications');
+    } else if (error.response?.status === 403) {
+      throw new Error('You do not have permission to view applications');
+    } else if (error.response?.data?.error) {
+      throw new Error(error.response.data.error);
+    } else if (error.response?.data?.detail) {
+      throw new Error(error.response.data.detail);
+    }
+    throw error;
   }
 };
 
@@ -232,36 +223,13 @@ export const getSimilarityScores = (params) => {
 };
 
 // Job Applications API
-export const getApplicationHistory = async (filters = {}) => {
+export const getApplicationHistory = async () => {
   try {
-    const params = new URLSearchParams();
-    
-    // Add status filter if not 'ALL'
-    if (filters.status && filters.status !== 'ALL') {
-      params.append('status', filters.status);
-    }
-    
-    // Add search term if provided
-    if (filters.search) {
-      params.append('search', filters.search);
-    }
-    
-    // Add date range filters
-    if (filters.startDate) {
-      params.append('start_date', filters.startDate);
-    }
-    if (filters.endDate) {
-      params.append('end_date', filters.endDate);
-    }
-    
-    // Add sorting parameters
-    if (filters.sortBy) {
-      params.append('ordering', filters.order === 'desc' ? `-${filters.sortBy}` : filters.sortBy);
-    }
-    
-    const response = await api.get(`/applications/history/?${params.toString()}`);
+    const response = await api.get('/applications/history/');
+    console.log('Application history response:', response);
     return response.data;
   } catch (error) {
+    console.error('Error fetching application history:', error);
     throw error;
   }
 };

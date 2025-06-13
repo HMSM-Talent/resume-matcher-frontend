@@ -27,18 +27,21 @@ function CandidateHistoryPage() {
       setError('');
       const response = await getApplicationHistory();
       
-      if (response.status === 'success') {
-        setApplications(response.data);
+      // The response is now a direct array of applications
+      if (Array.isArray(response)) {
+        setApplications(response);
       } else {
-        setError(response.message || 'Failed to fetch applications');
+        console.error('Unexpected response format:', response);
+        setError('Received unexpected data format');
       }
     } catch (err) {
+      console.error('Error fetching applications:', err);
       if (err.response?.status === 401) {
         navigate('/login');
       } else if (err.response?.status === 403) {
         setError('You do not have permission to view application history.');
       } else {
-        setError('Failed to fetch applications');
+        setError(err.message || 'Failed to fetch applications');
       }
     } finally {
       setLoading(false);
@@ -79,21 +82,22 @@ function CandidateHistoryPage() {
   };
 
   const handleWithdraw = async (applicationId) => {
+    setConfirmModal({ show: true, applicationId });
+  };
+
+  const confirmWithdraw = async () => {
+    const applicationId = confirmModal.applicationId;
     setWithdrawingId(applicationId);
     try {
       const response = await withdrawApplication(applicationId);
-      if (response.data.status === 'success') {
-        setApplications(prev => prev.map(app => 
-          app.id === applicationId 
-            ? { 
-                ...app, 
-                status: 'WITHDRAWN',
-                updated_at: response.data.data.withdrawn_at || new Date().toISOString()
-              }
-            : app
-        ));
-      }
+      
+      // Remove the application from the list instead of updating its status
+      setApplications(prev => prev.filter(app => app.id !== applicationId));
+
+      // Refresh the applications list to ensure we have the latest data
+      await fetchApplications();
     } catch (err) {
+      console.error('Error withdrawing application:', err);
       if (err.response?.status === 403) {
         setError('You do not have permission to withdraw this application.');
       } else if (err.response?.status === 404) {
@@ -107,6 +111,10 @@ function CandidateHistoryPage() {
       setWithdrawingId(null);
       setConfirmModal({ show: false, applicationId: null });
     }
+  };
+
+  const cancelWithdraw = () => {
+    setConfirmModal({ show: false, applicationId: null });
   };
 
   const getStatusBadgeClass = (status) => {
@@ -135,6 +143,31 @@ function CandidateHistoryPage() {
       </div>
 
       {error && <div className="error-message">{error}</div>}
+
+      <Modal
+        isOpen={confirmModal.show}
+        onClose={cancelWithdraw}
+        title="Confirm Withdrawal"
+      >
+        <div className="p-4">
+          <p className="mb-4">Are you sure you want to withdraw this application? This action cannot be undone.</p>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={cancelWithdraw}
+              className="btn btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmWithdraw}
+              className="btn btn-danger"
+              disabled={withdrawingId === confirmModal.applicationId}
+            >
+              {withdrawingId === confirmModal.applicationId ? 'Withdrawing...' : 'Confirm Withdrawal'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <div className="applications-list">
         <table className="min-w-full divide-y divide-gray-200">
@@ -190,7 +223,7 @@ function CandidateHistoryPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        const fileUrl = application?.job_description_file;
+                        const fileUrl = application?.job_file_url;
                         if (!fileUrl) {
                           console.error('File URL is missing for this job application:', application);
                           return;
@@ -206,7 +239,7 @@ function CandidateHistoryPage() {
                         window.open(fullUrl, '_blank');
                       }}
                       className="btn btn-secondary"
-                      disabled={!application?.job_description_file}
+                      disabled={!application?.job_file_url}
                     >
                       View Job Description
                     </button>

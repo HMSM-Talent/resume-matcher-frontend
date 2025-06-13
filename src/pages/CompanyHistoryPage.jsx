@@ -128,81 +128,81 @@ function CompanyHistoryPage() {
           jobs.map(job => {
             console.log('Rendering job:', job);
             return (
-              <div key={job.id} className="job-card">
-                <div className="job-header">
-                  <div className="job-title-section">
+            <div key={job.id} className="job-card">
+              <div className="job-header">
+                <div className="job-title-section">
                     <h2>{job.title || 'Untitled Job'}</h2>
                     <span className={`status-badge ${getStatusBadgeClass(job.is_active ? 'ACTIVE' : 'CLOSED')}`}>
                       {job.is_active ? 'Active' : 'Closed'}
-                    </span>
-                  </div>
-                  <div className="job-meta">
-                    <span className="meta-item">
+                  </span>
+                </div>
+                <div className="job-meta">
+                  <span className="meta-item">
                       <i className="fas fa-building"></i> {job.company_name || 'Company Name'}
                     </span>
                     <span className="meta-item">
                       <i className="fas fa-map-marker-alt"></i> {job.location || 'Location'}
-                    </span>
-                    <span className="meta-item">
+                  </span>
+                  <span className="meta-item">
                       <i className="fas fa-clock"></i> Posted {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Date not available'}
-                    </span>
-                    <span className="meta-item">
+                  </span>
+                  <span className="meta-item">
                       <i className="fas fa-briefcase"></i> {job.job_type || 'Job Type'}
-                    </span>
-                  </div>
+                  </span>
                 </div>
+              </div>
 
-                <div className="job-stats">
-                  <div className="stat">
-                    <span className="stat-label">Total Applications</span>
+              <div className="job-stats">
+                <div className="stat">
+                  <span className="stat-label">Total Applications</span>
                     <span className="stat-value">{job.application_counts?.total || 0}</span>
-                  </div>
-                  <div className="stat">
+                </div>
+                <div className="stat">
                     <span className="stat-label">High Match</span>
                     <span className="stat-value">{job.application_counts?.high_match || 0}</span>
-                  </div>
-                  <div className="stat">
+                </div>
+                <div className="stat">
                     <span className="stat-label">Medium Match</span>
                     <span className="stat-value">{job.application_counts?.medium_match || 0}</span>
-                  </div>
-                  <div className="stat">
+                </div>
+                <div className="stat">
                     <span className="stat-label">Low Match</span>
                     <span className="stat-value">{job.application_counts?.low_match || 0}</span>
-                  </div>
                 </div>
+              </div>
 
                 {job.applications && job.applications.length > 0 && (
-                  <div className="applications-section">
+              <div className="applications-section">
                     <h3>Applications</h3>
                     <div className="applications-table">
                       <table>
-                        <thead>
-                          <tr>
+                  <thead>
+                    <tr>
                             <th>Candidate</th>
                             <th>Applied Date</th>
                             <th>Status</th>
                             <th>Match Score</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {job.applications.map(application => (
-                            <tr key={application.id}>
-                              <td>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {job.applications.map(application => (
+                      <tr key={application.id}>
+                        <td>
                                 {`${application.candidate.first_name} ${application.candidate.last_name}`}
-                              </td>
-                              <td>{new Date(application.applied_at).toLocaleDateString()}</td>
-                              <td>
-                                <span className={`status-badge ${getApplicationStatusBadgeClass(application.status)}`}>
-                                  {application.status}
-                                </span>
-                              </td>
+                        </td>
+                        <td>{new Date(application.applied_at).toLocaleDateString()}</td>
+                        <td>
+                          <span className={`status-badge ${getApplicationStatusBadgeClass(application.status)}`}>
+                            {application.status}
+                          </span>
+                        </td>
                               <td>{application.similarity_score}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
                 )}
               </div>
             );

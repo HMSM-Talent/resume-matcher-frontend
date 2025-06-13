@@ -12,7 +12,7 @@ function SearchJobsPage() {
   const [error, setError] = useState('');
   const [applyingJobs, setApplyingJobs] = useState(new Set());
   const [applyError, setApplyError] = useState('');
-  const [appliedJobs, setAppliedJobs] = useState(new Set());
+  const [jobApplications, setJobApplications] = useState({});
   const [filters, setFilters] = useState({
     search: '',
     jobType: '',
@@ -43,65 +43,77 @@ function SearchJobsPage() {
     setPagination(prev => ({ ...prev, currentPage: newPage }));
   };
 
+  const getStatusBadgeClass = (status) => {
+    switch (status?.toUpperCase()) {
+      case 'PENDING':
+        return 'status-pending';
+      case 'ACCEPTED':
+        return 'status-accepted';
+      case 'REJECTED':
+        return 'status-rejected';
+      case 'WITHDRAWN':
+        return 'status-withdrawn';
+      default:
+        return 'status-pending';
+    }
+  };
+
   const handleApply = async (jobId) => {
     try {
       setApplyingJobs(prev => new Set([...prev, jobId]));
       setApplyError('');
+      
+      // Immediately update the UI to show pending status
+      setJobApplications(prev => ({
+        ...prev,
+        [jobId]: {
+          id: 'pending',
+          job: jobId,
+          status: 'PENDING',
+          updated_at: new Date().toISOString()
+        }
+      }));
+
       const response = await applyForJob(jobId);
       
-      // Handle success response
-      if (response.data.status === 'success') {
-        // Update the applied jobs set with the job ID from the response
-        const jobIdFromResponse = response.data.data.job;
-        setAppliedJobs(prev => new Set([...prev, jobIdFromResponse]));
-        
-        // Update the jobs list to reflect the application
-        setJobs(prev => prev.map(job => 
-          job.id === jobIdFromResponse 
-            ? { ...job, has_applied: true }
-            : job
-        ));
-
-        // Show success message for resubmission
-        if (response.data.message === 'Application resubmitted successfully') {
-          setApplyError(`Job ${jobId}: Application resubmitted successfully`);
-          // Clear the success message after 3 seconds
-          setTimeout(() => {
-            setApplyError('');
-          }, 3000);
+      // Update the applications map with the response data
+      setJobApplications(prev => ({
+        ...prev,
+        [jobId]: {
+          id: response.data.id,
+          job: jobId,
+          status: response.data.status || 'PENDING',
+          updated_at: response.data.updated_at || new Date().toISOString(),
+          similarity_score: response.data.similarity_score
         }
-      }
+      }));
+
     } catch (err) {
       // Handle error responses
       if (err.response?.data) {
-        const { status, message, detail, data } = err.response.data;
+        const { error, detail } = err.response.data;
         
-        // If we have data in the error response
-        if (data) {
-          const jobIdFromResponse = data.job;
-          const applicationStatus = data.status;
-
-          // Update UI based on application status
-          if (applicationStatus === 'WITHDRAWN') {
-            // For withdrawn applications, we can try to reapply
-            setAppliedJobs(prev => new Set([...prev, jobIdFromResponse]));
-            setJobs(prev => prev.map(job => 
-              job.id === jobIdFromResponse 
-                ? { ...job, has_applied: true }
-                : job
-            ));
-          } else if (['REJECTED', 'HIRED'].includes(applicationStatus)) {
-            // For final states, show the error message
-            setApplyError(`Job ${jobId}: ${detail || message || 'Cannot re-apply for this job'}`);
-          }
+        // Handle specific error cases
+        if (error === 'Please upload a resume before applying for jobs.') {
+          setApplyError('Please upload a resume before applying for jobs.');
+          navigate('/profile');
+        } else if (error === 'You have already applied for this job.') {
+          setApplyError('You have already applied for this job.');
+        } else if (error === 'Job not found or no longer active.') {
+          setApplyError('This job is no longer available.');
         } else {
-          // Show the error message for other cases
-          setApplyError(`Job ${jobId}: ${detail || message || 'Failed to apply for the job'}`);
+          setApplyError(detail || error || 'Failed to apply for the job');
         }
       } else {
-        // Handle network errors or unexpected errors
-        setApplyError(`Job ${jobId}: Failed to apply for the job. Please try again.`);
+        setApplyError('Failed to apply for the job. Please try again.');
       }
+
+      // Remove the pending status on error
+      setJobApplications(prev => {
+        const newApps = { ...prev };
+        delete newApps[jobId];
+        return newApps;
+      });
     } finally {
       setApplyingJobs(prev => {
         const newSet = new Set(prev);
@@ -121,7 +133,7 @@ function SearchJobsPage() {
         ...filters,
         page: pagination.currentPage,
         ordering: sortBy === 'score' ? '-score_value' : '-created_at',
-        min_score: filters.minScore
+        minScore: filters.minScore
       };
       const response = await searchJobDescriptions(searchParams);
       const jobsData = response.data.results || [];
@@ -151,13 +163,55 @@ function SearchJobsPage() {
 
       // Fetch user's applications
       try {
+        console.log('Starting to fetch applications...');
         const applicationsRes = await getJobApplications();
-        if (applicationsRes.data && Array.isArray(applicationsRes.data)) {
-          const appliedJobIds = new Set(applicationsRes.data.map(app => app.job));
-          setAppliedJobs(appliedJobIds);
+        console.log('Applications response received:', applicationsRes);
+        
+        if (applicationsRes?.data && Array.isArray(applicationsRes.data)) {
+          console.log('Processing applications data...');
+          const applicationsMap = {};
+          applicationsRes.data.forEach(app => {
+            if (app.job) {  // Only add if job ID exists
+              applicationsMap[app.job] = {
+                id: app.id,
+                job: app.job,
+                job_title: app.job_title,
+                company_name: app.company_name,
+                job_file_url: app.job_file_url,
+                status: app.status,
+                applied_at: app.applied_at,
+                updated_at: app.updated_at,
+                similarity_score: app.similarity_score,
+                company_feedback: app.company_feedback
+              };
+            }
+          });
+          console.log('Processed applications map:', applicationsMap);
+          setJobApplications(applicationsMap);
+        } else {
+          console.warn('Unexpected applications response format:', applicationsRes);
+          setError('Received unexpected data format for applications');
         }
       } catch (appErr) {
-        console.error('Error fetching applications:', appErr);
+        console.error('Error fetching applications:', {
+          error: appErr,
+          message: appErr.message,
+          response: appErr.response?.data,
+          stack: appErr.stack
+        });
+        
+        if (appErr.message === 'Please log in to view your applications') {
+          console.log('Redirecting to login...');
+          navigate('/login');
+        } else if (appErr.message === 'You do not have permission to view applications') {
+          setError('You do not have permission to view applications. Please contact support if this is an error.');
+        } else if (appErr.message.includes('resume')) {
+          console.log('Redirecting to profile for resume upload...');
+          setError('Please upload a resume before viewing your applications.');
+          navigate('/profile');
+        } else {
+          setError(`Failed to load application history: ${appErr.message}`);
+        }
       }
 
       setPagination(prev => ({
@@ -348,17 +402,29 @@ function SearchJobsPage() {
                             View Job Description
                           </button>
                         )}
-                        {appliedJobs.has(job.id) ? (
+                        {jobApplications[job.id] ? (
                           <div className="application-status">
-                            <span className="status-badge status-pending">Applied</span>
+                            <span className={`status-badge ${getStatusBadgeClass(jobApplications[job.id].status)}`}>
+                              {jobApplications[job.id].status}
+                            </span>
+                            <span className="text-sm text-gray-500 ml-2">
+                              Applied on {new Date(jobApplications[job.id].updated_at).toLocaleDateString()}
+                            </span>
                           </div>
                         ) : (
                           <button
                             onClick={() => handleApply(job.id)}
                             disabled={applyingJobs.has(job.id) || !job.is_active}
-                            className="btn btn-primary"
+                            className={`btn btn-primary ${applyingJobs.has(job.id) ? 'opacity-50' : ''}`}
                           >
-                            {applyingJobs.has(job.id) ? 'Applying...' : 'Apply'}
+                            {applyingJobs.has(job.id) ? (
+                              <div className="flex items-center gap-2">
+                                <div className="spinner w-4 h-4"></div>
+                                <span>Applying...</span>
+                              </div>
+                            ) : (
+                              'Apply'
+                            )}
                           </button>
                         )}
                       </div>

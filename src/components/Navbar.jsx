@@ -56,9 +56,9 @@ function Navbar() {
             </button>
           </>
         ) : (
-          <button onClick={() => navigate('/login')} className="nav-link">
-            Login
-          </button>
+            <button onClick={() => navigate('/login')} className="nav-link">
+              Login
+            </button>
         )}
       </div>
     </nav>
