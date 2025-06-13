@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCompanyDashboard, closeJob, getAllJobApplications } from '../api/api';
+import { getCompanyDashboard, closeJob, getAllJobApplications, updateApplicationStatus } from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
 import '../styles/CompanyDashboardPage.css';
 
@@ -13,6 +13,10 @@ const CompanyDashboardPage = () => {
   const [closeReason, setCloseReason] = useState('');
   const [isClosing, setIsClosing] = useState(false);
   const [closeError, setCloseError] = useState(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [feedback, setFeedback] = useState('');
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -144,6 +148,48 @@ const CompanyDashboardPage = () => {
         return 'status-badge-declined';
       default:
         return '';
+    }
+  };
+
+  const handleApplicationStatus = async (applicationId, status) => {
+    if (status === 'REJECTED') {
+      setSelectedApplication(applicationId);
+      setShowFeedbackModal(true);
+    } else {
+      await updateApplicationStatus(applicationId, status);
+    }
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (selectedApplication) {
+      try {
+        setIsUpdatingStatus(true);
+        await updateApplicationStatus(selectedApplication, 'REJECTED', feedback);
+        // Refresh the jobs list to show updated status
+        await fetchJobs();
+        setShowFeedbackModal(false);
+        setFeedback('');
+        setSelectedApplication(null);
+      } catch (error) {
+        console.error('Error submitting feedback:', error);
+        setError('Failed to update application status. Please try again.');
+      } finally {
+        setIsUpdatingStatus(false);
+      }
+    }
+  };
+
+  const handleAcceptApplication = async (applicationId) => {
+    try {
+      setIsUpdatingStatus(true);
+      await updateApplicationStatus(applicationId, 'ACCEPTED');
+      // Refresh the jobs list to show updated status
+      await fetchJobs();
+    } catch (error) {
+      console.error('Error accepting application:', error);
+      setError('Failed to accept application. Please try again.');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -282,12 +328,9 @@ const CompanyDashboardPage = () => {
                                 console.error('Resume URL is missing for this application:', application);
                                 return;
                               }
-                              // Remove any leading slashes and http://localhost:8000/ from the file URL
                               const cleanFileUrl = application.resume_file_url
                                 .replace(/^\/+/, '')
                                 .replace(/^http:\/\/localhost:8000\//, '');
-                              
-                              // Construct the full URL using the base URL without /api/
                               const baseUrl = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || '';
                               const fullUrl = `${baseUrl}/${cleanFileUrl}`;
                               console.log('Opening resume URL:', fullUrl);
@@ -298,6 +341,24 @@ const CompanyDashboardPage = () => {
                           >
                             View Resume
                           </button>
+                          {application.status === 'PENDING' && (
+                            <div className="status-actions">
+                              <button
+                                onClick={() => handleAcceptApplication(application.id)}
+                                className="btn btn-success"
+                                disabled={isUpdatingStatus}
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleApplicationStatus(application.id, 'REJECTED')}
+                                className="btn btn-danger"
+                                disabled={isUpdatingStatus}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -362,6 +423,42 @@ const CompanyDashboardPage = () => {
                 ) : (
                   'Confirm Close'
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Provide Feedback</h3>
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Enter feedback for the candidate..."
+              className="feedback-textarea"
+              rows="4"
+            />
+            <div className="modal-actions">
+              <button
+                onClick={() => {
+                  setShowFeedbackModal(false);
+                  setFeedback('');
+                  setSelectedApplication(null);
+                }}
+                className="btn btn-secondary"
+                disabled={isUpdatingStatus}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitFeedback}
+                className="btn btn-danger"
+                disabled={isUpdatingStatus}
+              >
+                {isUpdatingStatus ? 'Submitting...' : 'Submit Feedback'}
               </button>
             </div>
           </div>

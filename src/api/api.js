@@ -312,4 +312,21 @@ export const exportJobApplications = async (jobId) => {
   return api.get(`/jobs/${jobId}/applications/export/`);
 };
 
+export const updateApplicationStatus = async (applicationId, status, feedback = '') => {
+  try {
+    console.log('Updating application status:', { applicationId, status, feedback });
+    const response = await api.post(`/applications/${applicationId}/update-status/`, {
+      status,
+      feedback
+    });
+    console.log('Update status response:', response);
+    return response;
+  } catch (error) {
+    console.error('Error updating application status:', error);
+    console.error('Error response data:', error.response?.data);
+    console.error('Error response status:', error.response?.status);
+    throw error;
+  }
+};
+
 export default api;

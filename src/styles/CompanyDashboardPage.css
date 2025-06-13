@@ -253,48 +253,32 @@
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   z-index: 1000;
 }
 
 .modal-content {
   background: white;
-  border-radius: 12px;
   padding: 2rem;
-  width: 100%;
+  border-radius: 8px;
+  width: 90%;
   max-width: 500px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.modal-content h2 {
-  color: #2c3e50;
+.modal-content h3 {
   margin-bottom: 1rem;
+  color: #333;
 }
 
-.modal-content p {
-  color: #7f8c8d;
-  margin-bottom: 1.5rem;
-}
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #2c3e50;
-  font-weight: 500;
-}
-
-.form-group textarea {
+.feedback-textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 1rem;
   resize: vertical;
-  font-family: inherit;
 }
 
 .modal-actions {
@@ -303,56 +287,57 @@
   gap: 1rem;
 }
 
-.btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
+/* Status Action Buttons */
+.status-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.btn-success {
+  background-color: #28a745;
+  color: white;
   border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.btn-primary {
-  background-color: #3498db;
-  color: white;
+.btn-success:hover {
+  background-color: #218838;
 }
 
-.btn-primary:hover {
-  background-color: #2980b9;
-}
-
-.btn-secondary {
-  background-color: #95a5a6;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background-color: #7f8c8d;
+.btn-success:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
 }
 
 .btn-danger {
-  background-color: #e74c3c;
+  background-color: #dc3545;
   color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .btn-danger:hover {
-  background-color: #c0392b;
+  background-color: #c82333;
 }
 
-.btn-sm {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+.btn-danger:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
 }
 
-.btn-link {
-  background: none;
-  color: #3498db;
-  padding: 0;
-  text-decoration: underline;
-}
-
-.btn-link:hover {
-  color: #2980b9;
+/* Application Card Updates */
+.application-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 @media (max-width: 768px) {
