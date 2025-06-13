@@ -101,10 +101,10 @@ export const getResume = async () => {
 // JOB DESCRIPTION MANAGEMENT
 export const uploadJobDescription = async (formData) => {
   return api.post('/job-descriptions/upload/', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
+      headers: {
+        'Content-Type': 'multipart/form-data',
     },
-  });
+    });
 };
 
 // JOB SEARCH AND APPLICATIONS
@@ -264,23 +264,14 @@ export const getCompanyDashboard = async () => {
 
 export const closeJob = async (jobId, reason) => {
   try {
-    console.log('Closing job with ID:', jobId, 'Type:', typeof jobId);
-    
-    // Validate UUID format
-    if (!isValidUUID(jobId)) {
-      throw new Error('Invalid job ID format. Expected UUID.');
-    }
-    
-    console.log('Close reason:', reason);
-    const response = await api.post(`/jobs/${jobId}/close/`, { reason });
+    console.log('Closing job:', jobId, 'with reason:', reason);
+    const response = await api.post(`/job-descriptions/${jobId}/close/`, { reason });
     console.log('Close job response:', response);
     return response;
   } catch (error) {
     console.error('Error closing job:', error);
-    if (error.response) {
-      console.error('Error response data:', error.response.data);
-      console.error('Error response status:', error.response.status);
-    }
+    console.error('Error response data:', error.response?.data);
+    console.error('Error response status:', error.response?.status);
     throw error;
   }
 };

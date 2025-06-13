@@ -253,47 +253,59 @@ const CompanyDashboardPage = () => {
                 </div>
               </div>
 
-              {job.applications && job.applications.length > 0 && (
-                <div className="applications-section">
-                  <h3>Recent Applications</h3>
+              <div className="recent-applications">
+                <h3>Recent Applications</h3>
+                {job.recent_applications && job.recent_applications.length > 0 ? (
                   <div className="applications-list">
-                    {job.applications.slice(0, 3).map((application) => (
+                    {job.recent_applications.map(application => (
                       <div key={application.id} className="application-card">
                         <div className="application-header">
-                          <span className="candidate-name">
-                            {`${application.candidate.first_name} ${application.candidate.last_name}`}
-                          </span>
-                          <span className={`status-badge ${getStatusBadgeClass(application.status)}`}>
-                            {application.status}
-                          </span>
+                          <div className="candidate-info">
+                            <h4>{`${application.user.first_name} ${application.user.last_name}`}</h4>
+                            <span className={`status-badge ${getStatusBadgeClass(application.status)}`}>
+                              {application.status}
+                            </span>
+                          </div>
+                          <div className="application-meta">
+                            <span className="score">
+                              Score: {application.similarity_score}%
+                            </span>
+                            <span className="date">
+                              Applied: {new Date(application.updated_at).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
-                        <div className="application-details">
-                          <span className="score">
-                            <i className="fas fa-star"></i> Score: {application.similarity_score}%
-                          </span>
-                          <span className="date">
-                            <i className="fas fa-calendar"></i> {new Date(application.applied_at).toLocaleDateString()}
-                          </span>
+                        <div className="application-actions">
+                          <button
+                            onClick={() => {
+                              if (!application.resume_file_url) {
+                                console.error('Resume URL is missing for this application:', application);
+                                return;
+                              }
+                              // Remove any leading slashes and http://localhost:8000/ from the file URL
+                              const cleanFileUrl = application.resume_file_url
+                                .replace(/^\/+/, '')
+                                .replace(/^http:\/\/localhost:8000\//, '');
+                              
+                              // Construct the full URL using the base URL without /api/
+                              const baseUrl = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || '';
+                              const fullUrl = `${baseUrl}/${cleanFileUrl}`;
+                              console.log('Opening resume URL:', fullUrl);
+                              window.open(fullUrl, '_blank');
+                            }}
+                            className="btn btn-secondary"
+                            disabled={!application.resume_file_url}
+                          >
+                            View Resume
+                          </button>
                         </div>
-                        <button
-                          onClick={() => navigate(`/company/application/${application.id}`)}
-                          className="btn btn-secondary btn-sm"
-                        >
-                          View Details
-                        </button>
                       </div>
                     ))}
                   </div>
-                  {job.applications.length > 3 && (
-                    <button
-                      onClick={() => navigate(`/company/job/${job.id}/applications`)}
-                      className="btn btn-link"
-                    >
-                      View All Applications
-                    </button>
-                  )}
-                </div>
-              )}
+                ) : (
+                  <p className="no-applications">No applications yet</p>
+                )}
+              </div>
             </div>
           ))}
         </div>
