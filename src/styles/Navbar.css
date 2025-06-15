@@ -3,11 +3,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background-color: #ffffff;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(245, 247, 250, 0.8));
+  backdrop-filter: blur(8px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 1000;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .navbar-brand h1 {
@@ -31,11 +33,12 @@
   font-weight: 500;
   padding: 0.5rem 1rem;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .nav-link:hover {
   color: #2563eb;
+  transform: translateY(-2px);
 }
 
 .navbar-user {
