@@ -177,4 +177,35 @@
   background: #fee2e2;
   border-radius: 0.5rem;
   margin: 1rem 0;
+}
+
+.search-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-form input {
+  padding-right: 2.5rem;
+}
+
+.search-button {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6b7280;
+  padding: 0.25rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.search-button:hover {
+  color: #374151;
+}
+
+.search-button:focus {
+  outline: none;
 } 

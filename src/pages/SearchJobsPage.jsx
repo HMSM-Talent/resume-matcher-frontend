@@ -20,6 +20,8 @@ function SearchJobsPage() {
     minScore: 0,
     location: '',
   });
+  const [searchInput, setSearchInput] = useState('');
+  const [locationInput, setLocationInput] = useState('');
   const [sortBy, setSortBy] = useState('score');
   const [pagination, setPagination] = useState({
     count: 0,
@@ -32,6 +34,27 @@ function SearchJobsPage() {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
     setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setFilters(prev => ({ ...prev, search: searchInput }));
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+
+  const handleLocationSubmit = (e) => {
+    e.preventDefault();
+    setFilters(prev => ({ ...prev, location: locationInput }));
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'search') {
+      setSearchInput(value);
+    } else if (name === 'location') {
+      setLocationInput(value);
+    }
   };
 
   const handleSortChange = (e) => {
@@ -132,16 +155,27 @@ function SearchJobsPage() {
       const searchParams = {
         ...filters,
         page: pagination.currentPage,
-        ordering: sortBy === 'score' ? '-score_value' : '-created_at',
-        minScore: filters.minScore
+        ordering: sortBy === 'score' ? '-similarity_score' : '-created_at',
+        minScore: filters.minScore,
+        job_type: filters.jobType || undefined,
+        experience_level: filters.experienceLevel || undefined
       };
+
+      // Remove empty or undefined values
+      Object.keys(searchParams).forEach(key => {
+        if (searchParams[key] === '' || searchParams[key] === undefined) {
+          delete searchParams[key];
+        }
+      });
+
+      console.log('Search params:', searchParams); // Debug log
       const response = await searchJobDescriptions(searchParams);
       const jobsData = response.data.results || [];
 
       // Fetch similarity scores
       try {
         const scoreRes = await getSimilarityScores();
-        const scores = Array.isArray(scoreRes.data.results) ? scoreRes.data.results : [];
+        const scores = scoreRes.data.results || [];
         
         // Create a map of job IDs to scores
         const scoreMap = {};
@@ -149,11 +183,29 @@ function SearchJobsPage() {
           scoreMap[score.job_description] = score.score;
         });
 
-        // Combine job data with scores
-        const jobsWithScores = jobsData.map(job => ({
-          ...job,
-          score: scoreMap[job.id] !== undefined ? scoreMap[job.id] : null
-        }));
+        // Combine job data with scores and filter by minScore
+        const jobsWithScores = jobsData
+          .map(job => ({
+            ...job,
+            score: scoreMap[job.id] !== undefined ? scoreMap[job.id] : null,
+            similarity_score: scoreMap[job.id] !== undefined ? scoreMap[job.id] : null
+          }))
+          .filter(job => {
+            // If minScore is set, only show jobs with scores >= minScore
+            if (filters.minScore > 0) {
+              return job.score !== null && job.score >= filters.minScore;
+            }
+            return true;
+          });
+
+        // Sort jobs by score if that's the selected sort option
+        if (sortBy === 'score') {
+          jobsWithScores.sort((a, b) => {
+            if (a.similarity_score === null) return 1;
+            if (b.similarity_score === null) return -1;
+            return b.similarity_score - a.similarity_score;
+          });
+        }
 
         setJobs(jobsWithScores);
       } catch (scoreErr) {
@@ -256,15 +308,20 @@ function SearchJobsPage() {
             <div className="filters-grid">
               <div className="filter-group">
                 <label htmlFor="search">Search</label>
-                <input
-                  type="text"
-                  id="search"
-                  name="search"
-                  value={filters.search}
-                  onChange={handleFilterChange}
-                  placeholder="Search jobs..."
-                  className="w-full"
-                />
+                <form onSubmit={handleSearchSubmit} className="search-form">
+                  <input
+                    type="text"
+                    id="search"
+                    name="search"
+                    value={searchInput}
+                    onChange={handleInputChange}
+                    placeholder="Search jobs..."
+                    className="w-full"
+                  />
+                  <button type="submit" className="search-button">
+                    <i className="fas fa-search"></i>
+                  </button>
+                </form>
               </div>
 
               <div className="filter-group">
@@ -301,15 +358,20 @@ function SearchJobsPage() {
 
               <div className="filter-group">
                 <label htmlFor="location">Location</label>
-                <input
-                  type="text"
-                  id="location"
-                  name="location"
-                  value={filters.location}
-                  onChange={handleFilterChange}
-                  placeholder="Enter location..."
-                  className="w-full"
-                />
+                <form onSubmit={handleLocationSubmit} className="search-form">
+                  <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    value={locationInput}
+                    onChange={handleInputChange}
+                    placeholder="Enter location..."
+                    className="w-full"
+                  />
+                  <button type="submit" className="search-button">
+                    <i className="fas fa-search"></i>
+                  </button>
+                </form>
               </div>
 
               <div className="filter-group">
