@@ -58,13 +58,13 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 36, 107, 0.2);
 }
 
 .login-button {
-  background-color: #4299e1;
-  color: white;
+  background-color: var(--primary-color);
+  color: #ffffff;
   padding: 0.875rem;
   border: none;
   border-radius: 6px;
@@ -76,8 +76,7 @@
 }
 
 .login-button:hover {
-  background-color: #3182ce;
-}
+  background-color: var(--primary-hover);}
 
 .login-button:disabled {
   background-color: #a0aec0;
@@ -103,7 +102,7 @@
 }
 
 .register-link a {
-  color: #4299e1;
+  color: var(--primary-color);
   text-decoration: none;
   font-weight: 500;
 }

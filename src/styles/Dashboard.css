@@ -235,8 +235,8 @@
 }
 
 .btn-primary {
-  background-color: #2563eb;
-  color: white;
+  background-color: var(--primary-color);
+  color: #ffffff;
   border: none;
 }
 
@@ -251,7 +251,7 @@
 }
 
 .btn-secondary:hover {
-  background-color: #e5e7eb;
+  background-color: var(--primary-hover);
 }
 
 .edit-button,
